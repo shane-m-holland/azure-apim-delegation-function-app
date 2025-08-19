@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "APIM_VALIDATION_KEY": "aW50ZWdyYXRpb24mMjAyNTA5MDUxNDA4NTUmZVEwZE43L2ZqbFEvY0p6eGRoTlphWVdBODlLa21RN2k2a2ZuTm5SQWs4OU9ZaXFrTTJ5NWxQQVJkUXZ5RzREZkZQaStqM0xZVEpyMUY3aTVJSDJwdlE9PQ==",
+    "APIM_PORTAL_URL": "https://afdevapi.developer.azure-api.net",
+    "OKTA_ISSUER": "https://your-domain.okta.com",
+    "OKTA_CLIENT_ID": "your-okta-client-id",
+    "OKTA_CLIENT_SECRET": "your-okta-client-secret",
+    "OKTA_REDIRECT_URI": "https://your-function-app.azurewebsites.net/api/auth-callback",
+    "BASE_URL": "https://your-function-app.azurewebsites.net"
+  }
+}

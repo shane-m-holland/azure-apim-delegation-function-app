@@ -1,0 +1,10 @@
+{
+  "name": "apim-delegation-functions",
+  "version": "1.0.0",
+  "description": "APIM Developer Portal delegation with Okta OIDC",
+  "main": "index.js",
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
