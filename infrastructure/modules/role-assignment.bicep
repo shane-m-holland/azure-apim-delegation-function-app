@@ -8,7 +8,7 @@ param principalId string
 param functionAppName string
 
 // Generate a unique but predictable name for the role assignment
-var roleAssignmentName = guid('${subscription().subscriptionId}-${resourceGroup().name}-${apimServiceName}-${functionAppName}')
+var roleAssignmentName = guid('${subscription().subscriptionId}-${resourceGroup().name}-${apimServiceName}-${functionAppName}', principalId)
 
 // Reference the target APIM service (in the same resource group as this module deployment)
 resource apimService 'Microsoft.ApiManagement/service@2021-08-01' existing = {
