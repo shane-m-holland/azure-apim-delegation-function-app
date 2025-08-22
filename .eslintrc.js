@@ -20,14 +20,14 @@ module.exports = {
   rules: {
     // Error prevention
     'no-console': 'off', // Allow console.log in Azure Functions
-    'no-unused-vars': ['error', { 
+    'no-unused-vars': ['error', {
       argsIgnorePattern: '^_',
       varsIgnorePattern: '^_'
     }],
     'no-undef': 'error',
     'no-unreachable': 'error',
     'no-duplicate-imports': 'error',
-    
+
     // Code style
     'indent': ['error', 2, { SwitchCase: 1 }],
     'quotes': ['error', 'single', { avoidEscape: true }],
@@ -40,7 +40,7 @@ module.exports = {
       named: 'never',
       asyncArrow: 'always'
     }],
-    
+
     // Best practices
     'eqeqeq': ['error', 'always'],
     'no-eval': 'error',
@@ -51,13 +51,13 @@ module.exports = {
     'no-throw-literal': 'error',
     'prefer-const': 'error',
     'prefer-arrow-callback': 'error',
-    
+
     // Node.js specific
     'node/no-unsupported-features/es-syntax': 'off',
     'node/no-missing-require': 'error',
     'node/no-unpublished-require': 'off',
     'node/process-exit-as-throw': 'error',
-    
+
     // Azure Functions specific
     'no-process-exit': 'off' // Allow process.exit in Azure Functions
   },
@@ -66,6 +66,10 @@ module.exports = {
       files: ['**/*.test.js', '**/*.spec.js'],
       env: {
         jest: true
+      },
+      globals: {
+        createMockContext: 'readonly',
+        createMockRequest: 'readonly'
       },
       rules: {
         'no-unused-expressions': 'off'

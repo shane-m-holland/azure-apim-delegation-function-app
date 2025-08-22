@@ -56,34 +56,49 @@ jobs:
         environment: 
           - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
     environment: ${{ matrix.environment }}
+
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: 'Checkout GitHub Action'
       uses: actions/checkout@v4
 
     - name: 'Login to Azure'
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: 'Deploy Infrastructure'
-      uses: azure/arm-deploy@v1
+      uses: azure/arm-deploy@v2
       id: deploy-infrastructure
       with:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        resourceGroupName: ${{ secrets.AZURE_RG }}
+        resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
         template: ./infrastructure/main.bicep
-        parameters: ./infrastructure/parameters/${{ matrix.environment }}.bicepparam
+        parameters: >
+          appName=${{ secrets.APP_NAME || 'apim-delegation' }}
+          location=${{ secrets.AZURE_LOCATION || 'eastus2' }}
+          runtime=${{ secrets.RUNTIME || 'node' }}
+          sku=${{ secrets.AZURE_SKU || 'FC1' }}
+          osType=${{ secrets.AZURE_OS_TYPE || 'linux' }}
+          environment=${{ matrix.environment }}
+          apimValidationKey=${{ secrets.APIM_VALIDATION_KEY }}
+          apimPortalUrl=${{ secrets.APIM_PORTAL_URL }}
+          oidcIssuer=${{ secrets.OIDC_ISSUER }}
+          oidcClientId=${{ secrets.OIDC_CLIENT_ID }}
+          oidcClientSecret=${{ secrets.OIDC_CLIENT_SECRET }}
+          oidcAuthorizationEndpoint=${{ secrets.OIDC_AUTHORIZATION_ENDPOINT || '' }}
+          oidcTokenEndpoint=${{ secrets.OIDC_TOKEN_ENDPOINT || '' }}
+          oidcUserinfoEndpoint=${{ secrets.OIDC_USERINFO_ENDPOINT || '' }}
+          apimResourceGroup=${{ secrets.APIM_RESOURCE_GROUP || '' }}
+          apimServiceName=${{ secrets.APIM_SERVICE_NAME || '' }}
+          apimAccessToken=${{ secrets.APIM_ACCESS_TOKEN || '' }}
         scope: resourcegroup
         failOnStdErr: false
-      env:
-        APIM_VALIDATION_KEY: ${{ secrets.APIM_VALIDATION_KEY }}
-        APIM_PORTAL_URL: ${{ secrets.APIM_PORTAL_URL }}
-        OKTA_ISSUER: ${{ secrets.OKTA_ISSUER }}
-        OKTA_CLIENT_ID: ${{ secrets.OKTA_CLIENT_ID }}
-        OKTA_CLIENT_SECRET: ${{ secrets.OKTA_CLIENT_SECRET }}
-        APIM_RESOURCE_GROUP: ${{ secrets.APIM_RESOURCE_GROUP }}
-        APIM_SERVICE_NAME: ${{ secrets.APIM_SERVICE_NAME }}
 
     - name: 'Output Infrastructure Details'
       run: |
@@ -99,6 +114,10 @@ jobs:
         environment: 
           - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
     environment: ${{ matrix.environment }}
+
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: 'Checkout GitHub Action'
@@ -116,23 +135,49 @@ jobs:
         npm ci --only=production
 
     - name: 'Login to Azure'
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: 'Get Function App Name'
       id: get-function-app
       run: |
-        FUNCTION_APP_NAME=$(az functionapp list --resource-group ${{ secrets.AZURE_RG }} --query "[?contains(name, 'apim-delegation-${{ matrix.environment }}')].name" -o tsv)
+        APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
+        FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
         echo "function-app-name=$FUNCTION_APP_NAME" >> $GITHUB_OUTPUT
 
+    - name: 'Create Deployment Package'
+      run: |
+        # Create ZIP file for deployment (matching deploy script approach)
+        ZIP_FILE="deployment-$(date +%Y%m%d-%H%M%S).zip"
+        echo "zip-file=$ZIP_FILE" >> $GITHUB_ENV
+        
+        zip -r "$ZIP_FILE" . \
+          -x "*.git*" \
+          -x "node_modules/.cache/*" \
+          -x "*.env*" \
+          -x "*.log" \
+          -x "coverage/*" \
+          -x "test*" \
+          -x "docs/*" \
+          -x "infrastructure/*" \
+          -x "scripts/*" \
+          -x "*.md" \
+          -x "*.zip"
+
     - name: 'Deploy to Azure Functions'
-      uses: Azure/functions-action@v1
-      id: deploy-function
+      uses: azure/CLI@v2
       with:
-        app-name: ${{ steps.get-function-app.outputs.function-app-name }}
-        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+        inlineScript: |
+          az functionapp deployment source config-zip \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ steps.get-function-app.outputs.function-app-name }} \
+            --src ${{ env.zip-file }}
+
+    - name: 'Cleanup Deployment Package'
+      run: rm -f ${{ env.zip-file }}
 
   smoke-tests:
     needs: [deploy-application]
@@ -143,21 +188,28 @@ jobs:
         environment: 
           - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
     environment: ${{ matrix.environment }}
+
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: 'Checkout GitHub Action'
       uses: actions/checkout@v4
 
     - name: 'Login to Azure'
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: 'Get Function App URL'
       id: get-function-url
       run: |
-        FUNCTION_APP_NAME=$(az functionapp list --resource-group ${{ secrets.AZURE_RG }} --query "[?contains(name, 'apim-delegation-${{ matrix.environment }}')].name" -o tsv)
-        FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RG }} --name $FUNCTION_APP_NAME --query "defaultHostName" -o tsv)
+        APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
+        FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
+        FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name $FUNCTION_APP_NAME --query "defaultHostName" -o tsv)
         echo "function-app-url=https://$FUNCTION_APP_URL" >> $GITHUB_OUTPUT
 
     - name: 'Health Check'
