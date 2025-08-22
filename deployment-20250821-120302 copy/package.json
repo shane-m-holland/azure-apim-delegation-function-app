@@ -2,6 +2,7 @@
   "name": "apim-delegation-functions",
   "version": "1.0.0",
   "description": "APIM Developer Portal delegation with Okta OIDC",
+  "main": "index.js",
   "scripts": {
     "start": "func start",
     "dev": "func start --verbose",
@@ -20,10 +21,9 @@
     "clean": "rm -rf node_modules coverage .nyc_output",
     "validate": "npm run lint && npm run format:check && npm run test"
   },
-  "dependencies": {
-    "@azure/functions": "^4.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@azure/functions": "^4.0.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-node": "^11.1.0",

@@ -37,69 +37,16 @@ function httpPost(url, postData, headers = {}) {
     });
 }
 
-// Helper function to get Azure access token (Managed Identity or manual)
-async function getAzureAccessToken(context) {
-    const manualToken = process.env.APIM_ACCESS_TOKEN;
-    
-    // If manual token is provided (cross-subscription scenario), use it
-    if (manualToken) {
-        context.log('Using provided APIM_ACCESS_TOKEN for authentication');
-        return manualToken;
-    }
-    
-    // Otherwise, use Managed Identity (same-subscription scenario)
-    context.log('Using Managed Identity for authentication');
-    const identityEndpoint = process.env.IDENTITY_ENDPOINT;
-    const identityHeader = process.env.IDENTITY_HEADER;
-    
-    if (!identityEndpoint || !identityHeader) {
-        throw new Error('Managed Identity not available. Either provide APIM_ACCESS_TOKEN or ensure Function App has System-Assigned Managed Identity enabled.');
-    }
-    
-    const tokenUrl = `${identityEndpoint}?resource=https://management.azure.com/&api-version=2019-08-01`;
-    
-    return new Promise((resolve, reject) => {
-        const urlObj = new URL(tokenUrl);
-        const options = {
-            hostname: urlObj.hostname,
-            port: urlObj.port || 443,
-            path: urlObj.pathname + urlObj.search,
-            method: 'GET',
-            headers: {
-                'X-IDENTITY-HEADER': identityHeader
-            }
-        };
-
-        https.get(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    const response = JSON.parse(data);
-                    if (response.access_token) {
-                        resolve(response.access_token);
-                    } else {
-                        reject(new Error(`Failed to get managed identity token: ${data}`));
-                    }
-                } catch (e) {
-                    reject(new Error(`Failed to parse managed identity response: ${data}`));
-                }
-            });
-        }).on('error', reject);
-    });
-}
-
 // Helper function to create or update user in APIM
 async function createOrUpdateUserInAPIM(userId, userData, context) {
     const subscriptionId = process.env.APIM_SUBSCRIPTION_ID;
     const resourceGroup = process.env.APIM_RESOURCE_GROUP;
     const serviceName = process.env.APIM_SERVICE_NAME;
+    const accessToken = process.env.APIM_ACCESS_TOKEN; // Azure access token
     
-    if (!subscriptionId || !resourceGroup || !serviceName) {
-        throw new Error('Missing APIM configuration: APIM_SUBSCRIPTION_ID, APIM_RESOURCE_GROUP, APIM_SERVICE_NAME');
+    if (!subscriptionId || !resourceGroup || !serviceName || !accessToken) {
+        throw new Error('Missing APIM configuration: APIM_SUBSCRIPTION_ID, APIM_RESOURCE_GROUP, APIM_SERVICE_NAME, APIM_ACCESS_TOKEN');
     }
-    
-    const accessToken = await getAzureAccessToken(context);
     
     const url = `https://management.azure.com/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.ApiManagement/service/${serviceName}/users/${userId}?api-version=2021-08-01`;
     
@@ -124,8 +71,7 @@ async function getSharedAccessToken(userId, context) {
     const subscriptionId = process.env.APIM_SUBSCRIPTION_ID;
     const resourceGroup = process.env.APIM_RESOURCE_GROUP;
     const serviceName = process.env.APIM_SERVICE_NAME;
-    
-    const accessToken = await getAzureAccessToken(context);
+    const accessToken = process.env.APIM_ACCESS_TOKEN;
     
     const url = `https://management.azure.com/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.ApiManagement/service/${serviceName}/users/${userId}/generateSsoUrl?api-version=2021-08-01`;
     

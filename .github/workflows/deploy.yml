@@ -1,0 +1,192 @@
+name: Deploy Azure Function App
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
+  NODE_VERSION: '22.x'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup Node ${{ env.NODE_VERSION }} Environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 'Install dependencies'
+      shell: bash
+      run: |
+        npm ci
+
+    - name: 'Run linting'
+      shell: bash
+      run: |
+        npm run lint
+
+    - name: 'Run tests'
+      shell: bash
+      run: |
+        npm run test
+
+    - name: 'Build application'
+      shell: bash
+      run: |
+        npm run build
+
+  deploy-infrastructure:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        environment: 
+          - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    environment: ${{ matrix.environment }}
+    
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: 'Login to Azure'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Deploy Infrastructure'
+      uses: azure/arm-deploy@v1
+      id: deploy-infrastructure
+      with:
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        resourceGroupName: ${{ secrets.AZURE_RG }}
+        template: ./infrastructure/main.bicep
+        parameters: ./infrastructure/parameters/${{ matrix.environment }}.bicepparam
+        scope: resourcegroup
+        failOnStdErr: false
+      env:
+        APIM_VALIDATION_KEY: ${{ secrets.APIM_VALIDATION_KEY }}
+        APIM_PORTAL_URL: ${{ secrets.APIM_PORTAL_URL }}
+        OKTA_ISSUER: ${{ secrets.OKTA_ISSUER }}
+        OKTA_CLIENT_ID: ${{ secrets.OKTA_CLIENT_ID }}
+        OKTA_CLIENT_SECRET: ${{ secrets.OKTA_CLIENT_SECRET }}
+        APIM_RESOURCE_GROUP: ${{ secrets.APIM_RESOURCE_GROUP }}
+        APIM_SERVICE_NAME: ${{ secrets.APIM_SERVICE_NAME }}
+
+    - name: 'Output Infrastructure Details'
+      run: |
+        echo "Function App Name: ${{ steps.deploy-infrastructure.outputs.functionAppName }}"
+        echo "Function App URL: https://${{ steps.deploy-infrastructure.outputs.functionAppHostName }}"
+
+  deploy-application:
+    needs: [build-and-test, deploy-infrastructure]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        environment: 
+          - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    environment: ${{ matrix.environment }}
+    
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup Node ${{ env.NODE_VERSION }} Environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 'Install dependencies'
+      shell: bash
+      run: |
+        npm ci --only=production
+
+    - name: 'Login to Azure'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Get Function App Name'
+      id: get-function-app
+      run: |
+        FUNCTION_APP_NAME=$(az functionapp list --resource-group ${{ secrets.AZURE_RG }} --query "[?contains(name, 'apim-delegation-${{ matrix.environment }}')].name" -o tsv)
+        echo "function-app-name=$FUNCTION_APP_NAME" >> $GITHUB_OUTPUT
+
+    - name: 'Deploy to Azure Functions'
+      uses: Azure/functions-action@v1
+      id: deploy-function
+      with:
+        app-name: ${{ steps.get-function-app.outputs.function-app-name }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+
+  smoke-tests:
+    needs: [deploy-application]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        environment: 
+          - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    environment: ${{ matrix.environment }}
+    
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: 'Login to Azure'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Get Function App URL'
+      id: get-function-url
+      run: |
+        FUNCTION_APP_NAME=$(az functionapp list --resource-group ${{ secrets.AZURE_RG }} --query "[?contains(name, 'apim-delegation-${{ matrix.environment }}')].name" -o tsv)
+        FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RG }} --name $FUNCTION_APP_NAME --query "defaultHostName" -o tsv)
+        echo "function-app-url=https://$FUNCTION_APP_URL" >> $GITHUB_OUTPUT
+
+    - name: 'Health Check'
+      run: |
+        echo "Testing health endpoint..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get-function-url.outputs.function-app-url }}/api/health)
+        if [ $response -eq 200 ]; then
+          echo "✅ Health check passed"
+        else
+          echo "❌ Health check failed with status code: $response"
+          exit 1
+        fi
+
+    - name: 'Test Delegation Endpoint'
+      run: |
+        echo "Testing delegation endpoint (should return 401 without valid signature)..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.get-function-url.outputs.function-app-url }}/api/delegation?operation=SignIn&returnUrl=test")
+        if [ $response -eq 401 ]; then
+          echo "✅ Delegation endpoint correctly rejects invalid requests"
+        else
+          echo "❌ Delegation endpoint test failed with status code: $response"
+          exit 1
+        fi
+
+    - name: 'Deployment Summary'
+      run: |
+        echo "🚀 Deployment completed successfully!"
+        echo "Environment: ${{ matrix.environment }}"
+        echo "Function App URL: ${{ steps.get-function-url.outputs.function-app-url }}"
+        echo "Health Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/health"
+        echo "Delegation Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/delegation"
+        echo "Auth Callback Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/auth-callback"
