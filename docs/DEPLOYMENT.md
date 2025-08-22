@@ -42,7 +42,7 @@ OIDC_CLIENT_SECRET=dev-client-secret
 # Optional dev-specific settings
 APP_NAME=apim-delegation-dev
 AZURE_LOCATION=eastus2
-AZURE_SKU=Y1  # Consumption plan for cost savings
+AZURE_SKU=FC1  # Flex Consumption plan (recommended)
 ```
 
 ### Production Environment
@@ -129,16 +129,29 @@ APP_ID=$(az ad app list --display-name "github-actions-apim-delegation" --query 
 # Create service principal
 az ad sp create --id $APP_ID
 
-# Assign Contributor role to your resource group
+# Get the service principal object ID for role assignments
+SP_OBJECT_ID=$(az ad sp show --id $APP_ID --query id -o tsv)
+
+# Assign Contributor role to your subscription (required for resource group creation/management)
 az role assignment create \
   --assignee $APP_ID \
   --role "Contributor" \
-  --scope "/subscriptions/your-subscription-id/resourceGroups/your-resource-group"
+  --scope "/subscriptions/your-subscription-id"
+
+# Assign User Access Administrator role (required for role assignments during infrastructure deployment)
+az role assignment create \
+  --assignee-object-id $SP_OBJECT_ID \
+  --assignee-principal-type ServicePrincipal \
+  --role "User Access Administrator" \
+  --scope "/subscriptions/your-subscription-id"
 ```
 
 **Step 3: Configure Federated Credentials**
+
+⚠️ **Important**: You need to create federated credentials for **both** branch-based and environment-based authentication, as GitHub Actions uses different OIDC subjects for different contexts.
+
 ```bash
-# For main branch (production)
+# For main branch (production) - branch-based authentication
 az ad app federated-credential create \
   --id $APP_ID \
   --parameters '{
@@ -149,7 +162,18 @@ az ad app federated-credential create \
     "audiences": ["api://AzureADTokenExchange"]
   }'
 
-# For develop branch (development)  
+# For production environment - environment-based authentication  
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-actions-prod-env",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:your-username/your-repo-name:environment:prod", 
+    "description": "GitHub Actions Production Environment",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+
+# For develop branch (development) - branch-based authentication
 az ad app federated-credential create \
   --id $APP_ID \
   --parameters '{
@@ -157,6 +181,17 @@ az ad app federated-credential create \
     "issuer": "https://token.actions.githubusercontent.com",
     "subject": "repo:your-username/your-repo-name:ref:refs/heads/develop", 
     "description": "GitHub Actions Develop Branch",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+
+# For development environment - environment-based authentication
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-actions-dev-env",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:your-username/your-repo-name:environment:dev",
+    "description": "GitHub Actions Development Environment",
     "audiences": ["api://AzureADTokenExchange"]
   }'
 ```
@@ -171,6 +206,22 @@ az role assignment create \
   --role "API Management Service Contributor" \
   --scope "/subscriptions/apim-subscription-id/resourceGroups/apim-resource-group/providers/Microsoft.ApiManagement/service/apim-service-name"
 ```
+
+### GitHub Actions Workflow Configuration
+
+⚠️ **Critical**: The GitHub Actions workflow requires specific OIDC permissions to authenticate with Azure. Each job in the workflow **must** include the following permissions block:
+
+```yaml
+permissions:
+  id-token: write    # Required for OIDC token requests
+  contents: read     # Required for repository checkout
+```
+
+**Why these permissions are needed:**
+- `id-token: write`: Allows the workflow to request OIDC tokens from GitHub's token service
+- `contents: read`: Allows the workflow to checkout your repository code
+
+Without these permissions, Azure login will fail with authentication errors.
 
 ### GitHub Configuration
 
@@ -419,12 +470,15 @@ deploy:
 
 ## Available SKUs
 
-| SKU | Description | Best For |
-|-----|-------------|----------|
-| `Y1` | Consumption plan | Development, low-traffic |
-| `EP1` | Premium plan (1 core) | Production, guaranteed performance |
-| `EP2` | Premium plan (2 cores) | High-traffic production |
-| `EP3` | Premium plan (4 cores) | Very high-traffic production |
+| SKU | Plan Type | OS Support | Description | Best For |
+|-----|-----------|------------|-------------|----------|
+| `Y1` | Classic Consumption | Windows only | Legacy consumption plan | Development, low-traffic (Windows only) |
+| `FC1` | Flex Consumption | Windows/Linux | Modern consumption plan, better performance | **Recommended** for most deployments |
+| `EP1` | Premium | Windows/Linux | Dedicated plan, guaranteed performance (1 core) | Production workloads |
+| `EP2` | Premium | Windows/Linux | Dedicated plan, enhanced performance (2 cores) | High-traffic production |
+| `EP3` | Premium | Windows/Linux | Dedicated plan, maximum performance (4 cores) | Very high-traffic production |
+
+**Recommended:** Use `FC1` (Flex Consumption) for modern deployments with Linux support and Node.js 22.
 
 ## Security Best Practices
 
@@ -454,4 +508,4 @@ Solution: Set all required environment variables in your `.env.<environment>` fi
 ```
 The parameter sku has an invalid value
 ```
-Solution: Use a valid SKU: `Y1`, `EP1`, `EP2`, or `EP3`.
+Solution: Use a valid SKU: `Y1`, `FC1` (recommended), `EP1`, `EP2`, or `EP3`.

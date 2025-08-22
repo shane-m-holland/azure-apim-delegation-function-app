@@ -142,10 +142,18 @@ function validateOidcConfig() {
   }
 }
 
+/**
+ * Clear the discovery cache (useful for testing)
+ */
+function clearDiscoveryCache() {
+  discoveryCache.clear();
+}
+
 module.exports = {
   getOidcConfig,
   discoverOidcEndpoints,
   getOidcConfiguration,
   buildAuthorizationUrl,
-  validateOidcConfig
+  validateOidcConfig,
+  clearDiscoveryCache
 };
