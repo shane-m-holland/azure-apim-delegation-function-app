@@ -402,9 +402,3 @@ requests
 | where timestamp > ago(1h)
 | summarize avg(duration), percentile(duration, 95) by name
 ```
-
----
-
-**Last Updated**: [Current Date]  
-**API Version**: 1.0  
-**Document Owner**: Development Team
