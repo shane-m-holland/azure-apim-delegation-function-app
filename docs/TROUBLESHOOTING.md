@@ -371,19 +371,6 @@ requests
 - **Response Time**: Next business day
 - **Escalation**: Weekly review
 
-### 2. Contact Information
-
-#### Internal Contacts
-- **On-Call Engineer**: [phone/email]
-- **DevOps Team**: [team-email]
-- **Security Team**: [security-email]
-- **Product Owner**: [po-email]
-
-#### External Contacts
-- **Azure Support**: [support-link]
-- **Okta Support**: [support-link]
-- **Vendor Support**: [if applicable]
-
 ## 📋 Troubleshooting Checklist
 
 ### Pre-Deployment Checklist
@@ -407,9 +394,3 @@ requests
 - [ ] Root cause identified
 - [ ] Permanent fix implemented
 - [ ] Post-incident review completed
-
----
-
-**Last Updated**: [Current Date]
-**Next Review**: [Monthly]
-**Document Owner**: DevOps Team
