@@ -9,7 +9,7 @@ env:
   NODE_VERSION: '22.x'
 
 jobs:
-  build-and-test:
+  validate-build:
     runs-on: ubuntu-latest
     steps:
     - name: 'Checkout GitHub Action'
