@@ -238,7 +238,7 @@ export OIDC_CLIENT_SECRET="your-client-secret"
 # Optional variables (with defaults)
 export APP_NAME="apim-delegation"  # Default: apim-delegation
 export AZURE_LOCATION="eastus2"     # Default: eastus2
-export AZURE_SKU="Y1"              # Default: Y1 (Consumption)
+export AZURE_SKU="FC1"             # Default: FC1 (Flex Consumption, recommended)
 export RUNTIME="node"              # Default: node
 ```
 
@@ -366,10 +366,22 @@ graph TD
 |----------|-------------|---------|----------|
 | `APP_NAME` | Application name for resources | `apim-delegation` | No |
 | `AZURE_LOCATION` | Azure region for deployment | `eastus2` | No |
-| `AZURE_SKU` | Function App pricing tier | `Y1` (Consumption) | No |
+| `AZURE_SKU` | Function App pricing tier | `FC1` (Flex Consumption) | No |
 | `RUNTIME` | Function runtime | `node` | No |
 | `APIM_RESOURCE_GROUP` | APIM resource group | | No |
 | `APIM_SERVICE_NAME` | APIM service name | | No |
+
+### Available SKUs
+
+| SKU | Plan Type | OS Support | Description |
+|-----|-----------|------------|-------------|
+| `Y1` | Classic Consumption | Windows only | Legacy consumption plan |
+| `FC1` | Flex Consumption | Windows/Linux | **Recommended** - Modern consumption plan, better performance |
+| `EP1` | Premium | Windows/Linux | Dedicated plan, guaranteed performance (1 core) |
+| `EP2` | Premium | Windows/Linux | Dedicated plan, enhanced performance (2 cores) |
+| `EP3` | Premium | Windows/Linux | Dedicated plan, maximum performance (4 cores) |
+
+**Recommended:** Use `FC1` (Flex Consumption) for modern deployments with Linux support and Node.js 22.
 
 ### Optional OIDC Endpoints
 
