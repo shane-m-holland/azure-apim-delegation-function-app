@@ -3,12 +3,9 @@ name: Deploy Azure Function App
 on:
   push:
     branches:
-      - main
+      # - main
       - develop
-  pull_request:
-    branches:
-      - main
-      - develop
+  
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
