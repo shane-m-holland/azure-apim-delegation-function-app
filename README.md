@@ -1,4 +1,4 @@
-# Azure APIM Authentication Delegation Function App
+# Azure APIM Authentication Delegation Function App 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Azure Functions](https://img.shields.io/badge/Azure-Functions-0078d4.svg)](https://azure.microsoft.com/en-us/services/functions/)
