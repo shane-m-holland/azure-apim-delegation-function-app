@@ -42,6 +42,21 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
+// Blob service for the storage account
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+// Container for FC1 deployment packages
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'deploymentpackage'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 @description('The name of the storage account')
 output storageAccountName string = storageAccount.name
 
