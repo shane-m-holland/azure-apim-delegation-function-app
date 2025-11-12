@@ -172,30 +172,36 @@ jobs:
           # Deploy the ZIP file
           echo "Starting deployment to ${{ steps.get-function-app.outputs.function-app-name }}..."
 
-          az functionapp deployment source config-zip \
+          # FC1 deployment may fail when fetching logs, but deployment succeeds
+          # We check the output for success message instead of exit code
+          set +e  # Don't exit on error
+          DEPLOY_OUTPUT=$(az functionapp deployment source config-zip \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name ${{ steps.get-function-app.outputs.function-app-name }} \
             --src ${{ env.ZIP_FILE }} \
-            --timeout 600 || {
-            echo "⚠️ Deployment command returned an error (expected for FC1 log fetch issue)"
-          }
+            --timeout 600 2>&1)
+          DEPLOY_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
 
-          # Wait for deployment to be processed
-          echo "Waiting for deployment to be processed..."
-          sleep 15
+          echo "$DEPLOY_OUTPUT"
 
-          # Verify function app is running
-          echo "Verifying function app state..."
-          APP_STATE=$(az functionapp show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ steps.get-function-app.outputs.function-app-name }} \
-            --query "state" -o tsv)
-
-          if [ "$APP_STATE" = "Running" ]; then
-            echo "✅ Function app is running. Deployment completed successfully."
-            echo "Note: Any log fetch errors above are expected for FC1 plans and can be ignored."
+          # Check if deployment was successful (look for success message)
+          if echo "$DEPLOY_OUTPUT" | grep -q "Deployment was successful"; then
+            echo ""
+            echo "✅ Deployment package uploaded successfully."
+            echo "Note: Exit code $DEPLOY_EXIT_CODE may be non-zero due to FC1 log fetch limitation (this is expected)."
+            echo ""
+            echo "Waiting for deployment to stabilize..."
+            sleep 20
+            echo "✅ Deployment completed. The smoke-tests job will verify endpoints are working."
+            exit 0
+          elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
+            echo "✅ Deployment completed successfully (exit code 0)."
+            exit 0
           else
-            echo "❌ Function app state: $APP_STATE (expected: Running)"
+            echo ""
+            echo "❌ Deployment failed - success message not found in output"
+            echo "Exit code: $DEPLOY_EXIT_CODE"
             exit 1
           fi
 
