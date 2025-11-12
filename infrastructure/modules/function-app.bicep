@@ -85,10 +85,6 @@ var baseAppSettings = [
     value: '~4'
   }
   {
-    name: 'FUNCTIONS_WORKER_RUNTIME'
-    value: functionWorkerRuntime
-  }
-  {
     name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
     value: applicationInsights.properties.InstrumentationKey
   }
@@ -97,6 +93,14 @@ var baseAppSettings = [
     value: applicationInsights.properties.ConnectionString
   }
 ]
+
+// FUNCTIONS_WORKER_RUNTIME is only needed for Y1 and EPx (FC1 uses functionAppConfig.runtime)
+var workerRuntimeSettings = sku != 'FC1' ? [
+  {
+    name: 'FUNCTIONS_WORKER_RUNTIME'
+    value: functionWorkerRuntime
+  }
+] : []
 
 // Additional settings for Y1 and EPx (not needed for FC1)
 var contentShareSettings = sku != 'FC1' ? [
@@ -147,6 +151,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     siteConfig: {
       appSettings: concat(
         baseAppSettings,
+        workerRuntimeSettings,
         contentShareSettings,
         appSettingsArray
       )
