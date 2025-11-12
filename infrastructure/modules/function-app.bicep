@@ -5,7 +5,7 @@ param functionAppName string
 param location string = resourceGroup().location
 
 @description('The name of the App Service plan. Required for FC1 and EPx. Ignored when sku = "Y1".')
-param hostingPlanName string = '${functionAppName}-plan'
+param hostingPlanName string
 
 @description('The pricing tier for the hosting plan.')
 @allowed([
