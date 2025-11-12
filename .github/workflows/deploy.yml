@@ -51,7 +51,8 @@ jobs:
     strategy:
       matrix:
         environment: 
-          - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+          # - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+          - dev
     environment: ${{ matrix.environment }}
 
     permissions:
@@ -171,7 +172,7 @@ jobs:
           az functionapp deployment source config-zip \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name ${{ steps.get-function-app.outputs.function-app-name }} \
-            --src ${{ env.zip-file }}
+            --src ${{ env.zip-file }} --debug
 
     - name: 'Cleanup Deployment Package'
       run: rm -f ${{ env.zip-file }}
