@@ -74,8 +74,44 @@ var appSettingsArray = [for setting in items(appSettings): {
   value: setting.value
 }]
 
+// Define base app settings (common to all SKUs)
+var baseAppSettings = [
+  {
+    name: 'AzureWebJobsStorage'
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+  }
+  {
+    name: 'FUNCTIONS_EXTENSION_VERSION'
+    value: '~4'
+  }
+  {
+    name: 'FUNCTIONS_WORKER_RUNTIME'
+    value: functionWorkerRuntime
+  }
+  {
+    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+    value: applicationInsights.properties.InstrumentationKey
+  }
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: applicationInsights.properties.ConnectionString
+  }
+]
+
+// Additional settings for Y1 and EPx (not needed for FC1)
+var contentShareSettings = sku != 'FC1' ? [
+  {
+    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+  }
+  {
+    name: 'WEBSITE_CONTENTSHARE'
+    value: toLower(functionAppName)
+  }
+] : []
+
 // Function App
-resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
+resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
   tags: tags
@@ -88,38 +124,30 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     // FC1/EPx: attach to explicit plan
     serverFarmId: sku == 'Y1' ? null : hostingPlan.id
     reserved: osType == 'linux'
+    // FC1 requires functionAppConfig
+    functionAppConfig: sku == 'FC1' ? {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storageAccount.properties.primaryEndpoints.blob}deploymentpackage'
+          authentication: {
+            type: 'SystemAssignedIdentity'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 100
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: functionWorkerRuntime
+        version: functionWorkerRuntime == 'node' ? '22' : '~4'
+      }
+    } : null
     siteConfig: {
       appSettings: concat(
-        [
-          {
-            name: 'AzureWebJobsStorage'
-            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-          }
-          {
-            name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-          }
-          {
-            name: 'WEBSITE_CONTENTSHARE'
-            value: toLower(functionAppName)
-          }
-          {
-            name: 'FUNCTIONS_EXTENSION_VERSION'
-            value: '~4'
-          }
-          {
-            name: 'FUNCTIONS_WORKER_RUNTIME'
-            value: functionWorkerRuntime
-          }
-          {
-            name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-            value: applicationInsights.properties.InstrumentationKey
-          }
-          {
-            name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-            value: applicationInsights.properties.ConnectionString
-          }
-        ],
+        baseAppSettings,
+        contentShareSettings,
         appSettingsArray
       )
       cors: {
