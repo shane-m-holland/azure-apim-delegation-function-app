@@ -4,14 +4,14 @@ param functionAppName string
 @description('The location into which the resources should be deployed.')
 param location string = resourceGroup().location
 
-@description('The name of the App Service plan to use. Empty for consumption plan.')
-param hostingPlanName string = ''
+@description('The name of the App Service plan. Required for FC1 and EPx. Ignored when sku = "Y1".')
+param hostingPlanName string = '${functionAppName}-plan'
 
 @description('The pricing tier for the hosting plan.')
 @allowed([
-  'Y1'
-  'FC1'
-  'EP1'
+  'Y1'   // Classic Consumption
+  'FC1'  // Flex Consumption
+  'EP1'  // Elastic Premium
   'EP2'
   'EP3'
 ])
@@ -33,13 +33,13 @@ param functionWorkerRuntime string = 'node'
 @description('The name of the Application Insights component')
 param applicationInsightsName string
 
-@description('Application settings for the function app')
+@description('Application settings for the function app (additional to the defaults).')
 param appSettings object = {}
 
 @description('Tags to apply to the function app')
 param tags object = {}
 
-// Reference existing resources
+// Existing resources
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
   name: storageAccountName
 }
@@ -48,7 +48,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing
   name: applicationInsightsName
 }
 
-// Create / update a plan for any non-Y1 SKU (including FC1)
+// App Service plan for any non-Y1 SKU (FC1 or EPx)
 resource hostingPlan 'Microsoft.Web/serverfarms@2024-04-01' = if (sku != 'Y1') {
   name: hostingPlanName
   location: location
@@ -59,14 +59,12 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2024-04-01' = if (sku != 'Y1') {
         tier: 'FlexConsumption'
       }
     : {
-        name: sku         // EP1/EP2/EP3
+        name: sku         // EP1 / EP2 / EP3
         tier: 'ElasticPremium'
         family: 'EP'
       }
   properties: {
     reserved: osType == 'linux'
-    // For EPx you can still set maximumElasticWorkerCount, etc.
-    // For FC1 you usually omit those or use Flex-specific properties.
   }
 }
 
@@ -86,125 +84,58 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    serverFarmId: (sku == 'Y1') ? null : hostingPlan.id
+    // Y1: let Azure create/attach the dynamic plan
+    // FC1/EPx: attach to explicit plan
+    serverFarmId: sku == 'Y1' ? null : hostingPlan.id
     reserved: osType == 'linux'
-    siteConfig: union({
-      appSettings: union([
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionAppName)
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: functionWorkerRuntime
-        }
-        {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: applicationInsights.properties.InstrumentationKey
-        }
-        {
-          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-          value: applicationInsights.properties.ConnectionString
-        }
-      ], appSettingsArray)
+    siteConfig: {
+      appSettings: concat(
+        [
+          {
+            name: 'AzureWebJobsStorage'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'WEBSITE_CONTENTSHARE'
+            value: toLower(functionAppName)
+          }
+          {
+            name: 'FUNCTIONS_EXTENSION_VERSION'
+            value: '~4'
+          }
+          {
+            name: 'FUNCTIONS_WORKER_RUNTIME'
+            value: functionWorkerRuntime
+          }
+          {
+            name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+            value: applicationInsights.properties.InstrumentationKey
+          }
+          {
+            name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+            value: applicationInsights.properties.ConnectionString
+          }
+        ],
+        appSettingsArray
+      )
       cors: {
         allowedOrigins: [
           'https://portal.azure.com'
         ]
       }
-      use32BitWorkerProcess: false
       ftpsState: 'FtpsOnly'
+      http20Enabled: true
       minTlsVersion: '1.2'
       scmMinTlsVersion: '1.2'
-      http20Enabled: true
-      functionAppScaleLimit: (sku == 'Y1' || sku == 'FC1') ? 200 : 0
-      minimumElasticInstanceCount: (sku == 'Y1' || sku == 'FC1') ? 0 : 1
-    }, osType == 'linux' && sku != 'Y1' ? { linuxFxVersion: 'Node|22' } : {})
+      use32BitWorkerProcess: false
+    }
     httpsOnly: true
     clientAffinityEnabled: false
     publicNetworkAccess: 'Enabled'
-  }
-}
-
-// Function App Configuration (needed for Linux Node.js version setting)
-resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = if (sku != 'Y1') {
-  parent: functionApp
-  name: 'web'
-  properties: {
-    numberOfWorkers: 1
-    linuxFxVersion: osType == 'linux' ? 'Node|22' : null
-    defaultDocuments: [
-      'Default.htm'
-      'Default.html'
-      'index.html'
-    ]
-    requestTracingEnabled: false
-    remoteDebuggingEnabled: false
-    httpLoggingEnabled: false
-    acrUseManagedIdentityCreds: false
-    logsDirectorySizeLimit: 35
-    detailedErrorLoggingEnabled: false
-    publishingUsername: '$${functionAppName}'
-    scmType: 'None'
-    use32BitWorkerProcess: false
-    webSocketsEnabled: false
-    alwaysOn: sku != 'Y1' && sku != 'FC1'
-    managedPipelineMode: 'Integrated'
-    virtualApplications: [
-      {
-        virtualPath: '/'
-        physicalPath: 'site\\wwwroot'
-        preloadEnabled: sku != 'Y1' && sku != 'FC1'
-      }
-    ]
-    loadBalancing: 'LeastRequests'
-    experiments: {
-      rampUpRules: []
-    }
-    autoHealEnabled: false
-    vnetRouteAllEnabled: false
-    vnetPrivatePortsCount: 0
-    localMySqlEnabled: false
-    ipSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Allow'
-        priority: 2147483647
-        name: 'Allow all'
-        description: 'Allow all access'
-      }
-    ]
-    scmIpSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Allow'
-        priority: 2147483647
-        name: 'Allow all'
-        description: 'Allow all access'
-      }
-    ]
-    scmIpSecurityRestrictionsUseMain: false
-    http20Enabled: true
-    minTlsVersion: '1.2'
-    scmMinTlsVersion: '1.2'
-    ftpsState: 'FtpsOnly'
-    preWarmedInstanceCount: (sku == 'Y1' || sku == 'FC1') ? 0 : 1
-    functionAppScaleLimit: (sku == 'Y1' || sku == 'FC1') ? 200 : 0
-    functionsRuntimeScaleMonitoringEnabled: sku != 'Y1' && sku != 'FC1'
-    minimumElasticInstanceCount: (sku == 'Y1' || sku == 'FC1') ? 0 : 1
-    azureStorageAccounts: {}
   }
 }
 
