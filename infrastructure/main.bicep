@@ -148,7 +148,7 @@ module functionApp 'modules/function-app.bicep' = {
   params: {
     functionAppName: functionAppName
     location: location
-    hostingPlanName: (sku == 'Y1' || sku == 'FC1') ? '' : hostingPlanName
+    hostingPlanName: (sku == 'Y1') ? '' : hostingPlanName
     sku: sku
     osType: osType
     storageAccountName: storageAccountName
