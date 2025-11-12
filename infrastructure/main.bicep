@@ -184,6 +184,16 @@ module functionApp 'modules/function-app.bicep' = {
   ]
 }
 
+// Assign Storage Blob Data Contributor role to function app for FC1 deployments
+module storageRoleAssignment 'modules/storage-role-assignment.bicep' = if (sku == 'FC1') {
+  name: 'storage-role-assignment'
+  params: {
+    storageAccountName: storageAccountName
+    principalId: functionApp.outputs.principalId
+    functionAppName: functionAppName
+  }
+}
+
 // Assign Managed Identity permissions to APIM (for same-subscription scenarios)
 module apimRoleAssignment 'modules/role-assignment.bicep' = if (apimAccessToken == '' && apimResourceGroup != '' && apimServiceName != '') {
   name: 'apim-role-assignment'
