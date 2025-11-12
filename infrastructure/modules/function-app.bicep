@@ -48,8 +48,26 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing
   name: applicationInsightsName
 }
 
-resource hostingPlan 'Microsoft.Web/serverfarms@2022-09-01' existing = if (sku != 'Y1' && sku != 'FC1') {
+// Create / update a plan for any non-Y1 SKU (including FC1)
+resource hostingPlan 'Microsoft.Web/serverfarms@2024-04-01' = if (sku != 'Y1') {
   name: hostingPlanName
+  location: location
+  kind: sku == 'FC1' ? 'functionapp' : 'elastic'
+  sku: sku == 'FC1'
+    ? {
+        name: 'FC1'
+        tier: 'FlexConsumption'
+      }
+    : {
+        name: sku         // EP1/EP2/EP3
+        tier: 'ElasticPremium'
+        family: 'EP'
+      }
+  properties: {
+    reserved: osType == 'linux'
+    // For EPx you can still set maximumElasticWorkerCount, etc.
+    // For FC1 you usually omit those or use Flex-specific properties.
+  }
 }
 
 // Convert appSettings object to array format
@@ -68,8 +86,8 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    serverFarmId: (sku == 'Y1' || sku == 'FC1') ? null : hostingPlan.id
-    reserved: osType == 'linux' ? true : false
+    serverFarmId: (sku == 'Y1') ? null : hostingPlan.id
+    reserved: osType == 'linux'
     siteConfig: union({
       appSettings: union([
         {

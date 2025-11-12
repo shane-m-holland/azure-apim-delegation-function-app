@@ -200,7 +200,8 @@ az role assignment create \
 ```
 
 3. **Store Credentials in GitHub Secrets:**
-   - `AZURE_CREDENTIALS`: Output from step 1
+   - `AZURE_CLIENT_ID`: Output from step 1
+   - `AZURE_TENANT_ID`: Output from step 1
    - `APIM_VALIDATION_KEY`: From APIM delegation settings
    - `OIDC_CLIENT_SECRET`: From your OIDC provider
 
