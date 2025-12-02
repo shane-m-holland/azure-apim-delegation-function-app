@@ -1,12 +1,14 @@
 # Troubleshooting Guide
 
-This guide helps diagnose and resolve common issues with the Azure APIM Authentication Delegation Function App.
+This guide helps diagnose and resolve common issues with the Azure APIM
+Authentication Delegation Function App.
 
 ## 🚨 Common Issues
 
 ### 1. Signature Validation Failures
 
 #### Symptoms
+
 - Users see "Invalid signature" error when trying to sign in
 - Logs show "Signature validation failed"
 - HTTP 401 responses from delegation endpoint
@@ -14,6 +16,7 @@ This guide helps diagnose and resolve common issues with the Azure APIM Authenti
 #### Causes & Solutions
 
 **Incorrect APIM Validation Key**
+
 ```bash
 # Check current key in Function App
 az functionapp config appsettings list --name <function-app> --resource-group <rg> --query "[?name=='APIM_VALIDATION_KEY'].value"
@@ -23,6 +26,7 @@ az apim show --name <apim-name> --resource-group <rg> --query "properties.delega
 ```
 
 **Base64 Encoding Issues**
+
 ```javascript
 // Verify key is properly base64 encoded
 const key = process.env.APIM_VALIDATION_KEY;
@@ -31,6 +35,7 @@ console.log('Key length:', Buffer.from(key, 'base64').length);
 ```
 
 **String Construction Mismatch**
+
 ```javascript
 // Verify string-to-sign construction matches APIM specification
 // For SignIn: salt + '\n' + returnUrl
@@ -38,6 +43,7 @@ console.log('Key length:', Buffer.from(key, 'base64').length);
 ```
 
 #### Debug Steps
+
 1. Enable verbose logging in Function App
 2. Compare computed vs received signatures
 3. Verify APIM delegation configuration
@@ -46,6 +52,7 @@ console.log('Key length:', Buffer.from(key, 'base64').length);
 ### 2. OAuth Callback Errors
 
 #### Symptoms
+
 - "Token exchange failed" errors
 - Users redirected to error page after Okta authentication
 - HTTP 500 responses from auth-callback endpoint
@@ -53,6 +60,7 @@ console.log('Key length:', Buffer.from(key, 'base64').length);
 #### Causes & Solutions
 
 **Invalid Okta Configuration**
+
 ```bash
 # Verify Okta settings
 echo "Issuer: $OKTA_ISSUER"
@@ -64,11 +72,13 @@ curl "$OKTA_ISSUER/.well-known/openid_configuration"
 ```
 
 **Redirect URI Mismatch**
+
 - Ensure Okta app redirect URI matches Function App URL
 - Check for HTTP vs HTTPS mismatches
 - Verify domain name accuracy
 
 **Client Secret Issues**
+
 ```bash
 # Test client credentials
 curl -X POST "$OKTA_ISSUER/v1/token" \
@@ -77,6 +87,7 @@ curl -X POST "$OKTA_ISSUER/v1/token" \
 ```
 
 #### Debug Steps
+
 1. Check Okta application configuration
 2. Verify network connectivity to Okta
 3. Test OAuth flow manually
@@ -85,6 +96,7 @@ curl -X POST "$OKTA_ISSUER/v1/token" \
 ### 3. APIM User Creation Failures
 
 #### Symptoms
+
 - "Missing APIM configuration" errors
 - Users authenticated but not created in APIM
 - APIM Management API errors
@@ -92,6 +104,7 @@ curl -X POST "$OKTA_ISSUER/v1/token" \
 #### Causes & Solutions
 
 **Missing APIM Credentials**
+
 ```bash
 # Check required APIM settings
 az functionapp config appsettings list --name <function-app> --resource-group <rg> \
@@ -99,11 +112,13 @@ az functionapp config appsettings list --name <function-app> --resource-group <r
 ```
 
 **Insufficient Permissions**
+
 - Verify service principal has APIM Contributor role
 - Check Azure AD token validity
 - Ensure subscription access
 
 **API Version Compatibility**
+
 ```javascript
 // Verify APIM Management API version
 const apiVersion = '2021-08-01'; // Current version used
@@ -111,6 +126,7 @@ const apiVersion = '2021-08-01'; // Current version used
 ```
 
 #### Debug Steps
+
 1. Test APIM Management API access manually
 2. Verify service principal permissions
 3. Check Azure AD token expiration
@@ -119,6 +135,7 @@ const apiVersion = '2021-08-01'; // Current version used
 ### 4. Function App Deployment Issues
 
 #### Symptoms
+
 - Deployment failures in GitHub Actions
 - Function App not responding
 - Configuration errors
@@ -126,6 +143,7 @@ const apiVersion = '2021-08-01'; // Current version used
 #### Causes & Solutions
 
 **Bicep Template Errors**
+
 ```bash
 # Validate Bicep template
 az bicep build --file infrastructure/main.bicep
@@ -137,8 +155,8 @@ az deployment group what-if \
   --parameters infrastructure/parameters/dev.bicepparam
 ```
 
-**Missing GitHub Secrets**
-Required secrets in GitHub repository:
+**Missing GitHub Secrets** Required secrets in GitHub repository:
+
 - `AZURE_CREDENTIALS`
 - `AZURE_SUBSCRIPTION_ID`
 - `AZURE_RG`
@@ -146,12 +164,14 @@ Required secrets in GitHub repository:
 - `OKTA_CLIENT_SECRET`
 
 **Function App Cold Start**
+
 ```bash
 # Warm up function app
 curl "https://<function-app>.azurewebsites.net/api/health"
 ```
 
 #### Debug Steps
+
 1. Check GitHub Actions logs
 2. Verify Azure credentials
 3. Test Bicep templates locally
@@ -162,6 +182,7 @@ curl "https://<function-app>.azurewebsites.net/api/health"
 ### 1. Application Insights Queries
 
 #### Authentication Flow Analysis
+
 ```kusto
 // Track complete authentication flow
 traces
@@ -172,6 +193,7 @@ traces
 ```
 
 #### Error Analysis
+
 ```kusto
 // Analyze error patterns
 exceptions
@@ -181,6 +203,7 @@ exceptions
 ```
 
 #### Performance Monitoring
+
 ```kusto
 // Function execution times
 requests
@@ -192,6 +215,7 @@ requests
 ### 2. Health Check Endpoints
 
 #### Function App Health
+
 ```bash
 # Basic health check
 curl "https://<function-app>.azurewebsites.net/api/health"
@@ -204,6 +228,7 @@ curl "https://<function-app>.azurewebsites.net/api/health"
 ```
 
 #### Delegation Endpoint Test
+
 ```bash
 # Test delegation endpoint (should return 401 without valid signature)
 curl "https://<function-app>.azurewebsites.net/api/delegation?operation=SignIn&returnUrl=test"
@@ -214,6 +239,7 @@ curl "https://<function-app>.azurewebsites.net/api/delegation?operation=SignIn&r
 ### 3. Log Analysis
 
 #### Enable Debug Logging
+
 ```json
 // In host.json
 {
@@ -226,6 +252,7 @@ curl "https://<function-app>.azurewebsites.net/api/delegation?operation=SignIn&r
 ```
 
 #### Key Log Messages
+
 - `"Delegation endpoint called"` - Request received
 - `"Signature validated successfully"` - HMAC validation passed
 - `"Token exchange successful"` - OAuth flow completed
@@ -236,12 +263,14 @@ curl "https://<function-app>.azurewebsites.net/api/delegation?operation=SignIn&r
 ### 1. Service Outage Recovery
 
 #### Immediate Actions
+
 1. Check Azure service health
 2. Verify Function App status
 3. Test health endpoints
 4. Review recent deployments
 
 #### Rollback Procedure
+
 ```bash
 # Rollback to previous deployment
 az functionapp deployment source config-zip \
@@ -253,6 +282,7 @@ az functionapp deployment source config-zip \
 ### 2. Configuration Recovery
 
 #### Backup Configuration
+
 ```bash
 # Export current settings
 az functionapp config appsettings list \
@@ -262,6 +292,7 @@ az functionapp config appsettings list \
 ```
 
 #### Restore Configuration
+
 ```bash
 # Restore from backup
 az functionapp config appsettings set \
@@ -273,6 +304,7 @@ az functionapp config appsettings set \
 ### 3. Secret Rotation Emergency
 
 #### APIM Validation Key
+
 ```bash
 # Generate new key in APIM
 az apim update --name <apim-name> --resource-group <rg> \
@@ -285,6 +317,7 @@ az functionapp config appsettings set \
 ```
 
 #### Okta Client Secret
+
 1. Generate new secret in Okta Admin Console
 2. Update Function App configuration
 3. Test authentication flow
@@ -295,17 +328,20 @@ az functionapp config appsettings set \
 ### 1. Key Metrics to Monitor
 
 #### Availability Metrics
+
 - Function App availability (>99.9%)
 - Health endpoint response time (<1s)
 - Authentication success rate (>95%)
 
 #### Performance Metrics
+
 - Average response time (<2s)
 - Cold start frequency
 - Memory usage
 - CPU utilization
 
 #### Error Metrics
+
 - HTTP 4xx/5xx error rates
 - Exception count
 - Failed authentications
@@ -313,6 +349,7 @@ az functionapp config appsettings set \
 ### 2. Alert Rules
 
 #### Critical Alerts
+
 ```kusto
 // High error rate
 requests
@@ -323,6 +360,7 @@ requests
 ```
 
 #### Warning Alerts
+
 ```kusto
 // Slow response times
 requests
@@ -334,6 +372,7 @@ requests
 ### 3. Dashboard Setup
 
 #### Key Visualizations
+
 - Authentication flow success rate
 - Response time trends
 - Error rate by endpoint
@@ -344,6 +383,7 @@ requests
 ### 1. Severity Levels
 
 #### P0 - Critical (Service Down)
+
 - Complete service outage
 - Security breach
 - Data loss
@@ -351,6 +391,7 @@ requests
 - **Escalation**: Immediate to on-call engineer
 
 #### P1 - High (Major Impact)
+
 - Partial service degradation
 - High error rates (>25%)
 - Performance issues
@@ -358,6 +399,7 @@ requests
 - **Escalation**: Within 2 hours if unresolved
 
 #### P2 - Medium (Minor Impact)
+
 - Intermittent issues
 - Low error rates (<10%)
 - Non-critical feature issues
@@ -365,6 +407,7 @@ requests
 - **Escalation**: Next business day
 
 #### P3 - Low (Minimal Impact)
+
 - Documentation issues
 - Enhancement requests
 - Minor bugs
@@ -374,6 +417,7 @@ requests
 ## 📋 Troubleshooting Checklist
 
 ### Pre-Deployment Checklist
+
 - [ ] All secrets configured correctly
 - [ ] Bicep templates validated
 - [ ] Tests passing
@@ -381,6 +425,7 @@ requests
 - [ ] Monitoring configured
 
 ### Post-Deployment Checklist
+
 - [ ] Health endpoints responding
 - [ ] Authentication flow tested
 - [ ] Logs showing expected messages
@@ -388,6 +433,7 @@ requests
 - [ ] Performance within acceptable limits
 
 ### Incident Response Checklist
+
 - [ ] Issue severity assessed
 - [ ] Stakeholders notified
 - [ ] Immediate mitigation applied

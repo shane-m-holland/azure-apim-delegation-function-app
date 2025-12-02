@@ -34,14 +34,14 @@ describe('Health Function', () => {
 
     const timestamp = context.res.body.timestamp;
     const date = new Date(timestamp);
-    
+
     expect(date.toISOString()).toBe(timestamp);
     expect(date.getTime()).not.toBeNaN();
   });
 
   test('should handle different HTTP methods', async () => {
     const postReq = createMockRequest({ method: 'POST' });
-    
+
     await healthFunction(context, postReq);
 
     expect(context.res.status).toBe(200);

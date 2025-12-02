@@ -2,6 +2,11 @@
 jest.mock('../shared/oidc-helper');
 jest.mock('https', () => ({
   request: jest.fn(),
+  get: jest.fn(),
+  Agent: jest.fn().mockImplementation(() => ({}))
+}));
+jest.mock('http', () => ({
+  request: jest.fn(),
   get: jest.fn()
 }));
 
@@ -17,7 +22,7 @@ describe('Auth Callback Function', () => {
   beforeEach(() => {
     context = createMockContext();
     req = createMockRequest();
-    
+
     // Reset environment variables
     process.env = {
       ...originalEnv,
@@ -26,7 +31,7 @@ describe('Auth Callback Function', () => {
       APIM_SERVICE_NAME: 'test-apim-service',
       APIM_PORTAL_URL: 'https://test-apim.developer.azure-api.net'
     };
-    
+
     // Reset all mocks
     jest.clearAllMocks();
   });
@@ -71,14 +76,16 @@ describe('Auth Callback Function', () => {
     });
 
     test('should return 400 when state is expired', async () => {
-      const expiredTimestamp = Date.now() - (11 * 60 * 1000); // 11 minutes ago
+      const expiredTimestamp = Date.now() - 11 * 60 * 1000; // 11 minutes ago
       req.query = {
         code: 'test-code',
-        state: Buffer.from(JSON.stringify({ 
-          timestamp: expiredTimestamp,
-          returnUrl: '/test',
-          salt: 'test-salt'
-        })).toString('base64')
+        state: Buffer.from(
+          JSON.stringify({
+            timestamp: expiredTimestamp,
+            returnUrl: '/test',
+            salt: 'test-salt'
+          })
+        ).toString('base64')
       };
 
       await authCallbackFunction(context, req);
@@ -92,11 +99,13 @@ describe('Auth Callback Function', () => {
     beforeEach(() => {
       req.query = {
         code: 'test-code',
-        state: Buffer.from(JSON.stringify({ 
-          timestamp: Date.now(),
-          returnUrl: '/test',
-          salt: 'test-salt'
-        })).toString('base64')
+        state: Buffer.from(
+          JSON.stringify({
+            timestamp: Date.now(),
+            returnUrl: '/test',
+            salt: 'test-salt'
+          })
+        ).toString('base64')
       };
     });
 
@@ -150,12 +159,14 @@ describe('Auth Callback Function', () => {
           statusCode: 200,
           on: jest.fn((event, callback) => {
             if (event === 'data') {
-              callback(JSON.stringify({
-                sub: 'user123',
-                email: 'user@example.com',
-                given_name: 'Test',
-                family_name: 'User'
-              }));
+              callback(
+                JSON.stringify({
+                  sub: 'user123',
+                  email: 'user@example.com',
+                  given_name: 'Test',
+                  family_name: 'User'
+                })
+              );
             } else if (event === 'end') {
               callback();
             }
@@ -167,7 +178,7 @@ describe('Auth Callback Function', () => {
 
       // Mock APIM user creation - provide access token
       process.env.APIM_ACCESS_TOKEN = 'test-apim-token';
-      
+
       // Mock APIM user creation request
       https.request.mockImplementationOnce((options, callback) => {
         const apimResponse = {
@@ -190,7 +201,12 @@ describe('Auth Callback Function', () => {
           statusCode: 200,
           on: jest.fn((event, callback) => {
             if (event === 'data') {
-              callback(JSON.stringify({ value: 'https://test-apim.developer.azure-api.net/signin-sso?token=sso-token&returnUrl=%2Ftest' }));
+              callback(
+                JSON.stringify({
+                  value:
+                    'https://test-apim.developer.azure-api.net/signin-sso?token=sso-token&returnUrl=%2Ftest'
+                })
+              );
             } else if (event === 'end') {
               callback();
             }
@@ -210,15 +226,17 @@ describe('Auth Callback Function', () => {
 
   describe('Token Exchange', () => {
     let mockOidcConfig;
-    
+
     beforeEach(() => {
       req.query = {
         code: 'test-authorization-code',
-        state: Buffer.from(JSON.stringify({ 
-          timestamp: Date.now(),
-          returnUrl: '/test',
-          salt: 'test-salt'
-        })).toString('base64')
+        state: Buffer.from(
+          JSON.stringify({
+            timestamp: Date.now(),
+            returnUrl: '/test',
+            salt: 'test-salt'
+          })
+        ).toString('base64')
       };
 
       mockOidcConfig = {
@@ -246,7 +264,12 @@ describe('Auth Callback Function', () => {
           statusCode: 400,
           on: jest.fn((event, callback) => {
             if (event === 'data') {
-              callback(JSON.stringify({ error: 'invalid_grant', error_description: 'Authorization code is invalid' }));
+              callback(
+                JSON.stringify({
+                  error: 'invalid_grant',
+                  error_description: 'Authorization code is invalid'
+                })
+              );
             } else if (event === 'end') {
               callback();
             }
@@ -267,11 +290,13 @@ describe('Auth Callback Function', () => {
     beforeEach(() => {
       req.query = {
         code: 'test-code',
-        state: Buffer.from(JSON.stringify({ 
-          timestamp: Date.now(),
-          returnUrl: '/test',
-          salt: 'test-salt'
-        })).toString('base64')
+        state: Buffer.from(
+          JSON.stringify({
+            timestamp: Date.now(),
+            returnUrl: '/test',
+            salt: 'test-salt'
+          })
+        ).toString('base64')
       };
     });
 
@@ -316,12 +341,14 @@ describe('Auth Callback Function', () => {
           statusCode: 200,
           on: jest.fn((event, callback) => {
             if (event === 'data') {
-              callback(JSON.stringify({
-                sub: 'user123',
-                email: 'user@example.com',
-                given_name: 'Test',
-                family_name: 'User'
-              }));
+              callback(
+                JSON.stringify({
+                  sub: 'user123',
+                  email: 'user@example.com',
+                  given_name: 'Test',
+                  family_name: 'User'
+                })
+              );
             } else if (event === 'end') {
               callback();
             }
@@ -333,7 +360,7 @@ describe('Auth Callback Function', () => {
 
       // Mock APIM user creation failure
       process.env.APIM_ACCESS_TOKEN = 'test-apim-token';
-      
+
       https.request.mockImplementationOnce((options, callback) => {
         const errorResponse = {
           statusCode: 500,
@@ -360,11 +387,13 @@ describe('Auth Callback Function', () => {
     test('should handle general errors', async () => {
       req.query = {
         code: 'test-code',
-        state: Buffer.from(JSON.stringify({ 
-          timestamp: Date.now(),
-          returnUrl: '/test',
-          salt: 'test-salt'
-        })).toString('base64')
+        state: Buffer.from(
+          JSON.stringify({
+            timestamp: Date.now(),
+            returnUrl: '/test',
+            salt: 'test-salt'
+          })
+        ).toString('base64')
       };
 
       getOidcConfiguration.mockRejectedValue(new Error('Unexpected error'));
