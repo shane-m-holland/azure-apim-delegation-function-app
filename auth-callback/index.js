@@ -11,6 +11,7 @@ function httpPost(url, postData, headers = {}) {
       port: urlObj.port || 443,
       path: urlObj.pathname + urlObj.search,
       method: 'POST',
+      servername: urlObj.hostname, // Enable SNI for custom domains
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData),
@@ -66,6 +67,7 @@ async function getAzureAccessToken(context) {
       port: urlObj.port || 443,
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
+      servername: urlObj.hostname, // Enable SNI for custom domains
       headers: {
         'X-IDENTITY-HEADER': identityHeader
       }
@@ -151,6 +153,7 @@ function httpPutJson(url, data, headers = {}) {
       port: urlObj.port || 443,
       path: urlObj.pathname + urlObj.search,
       method: 'PUT',
+      servername: urlObj.hostname, // Enable SNI for custom domains
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
@@ -193,6 +196,7 @@ function httpPostJson(url, data, headers = {}) {
       port: urlObj.port || 443,
       path: urlObj.pathname + urlObj.search,
       method: 'POST',
+      servername: urlObj.hostname, // Enable SNI for custom domains
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
@@ -231,6 +235,7 @@ function httpGetWithAuth(url, accessToken) {
       port: urlObj.port || 443,
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
+      servername: urlObj.hostname, // Enable SNI for custom domains
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json'
