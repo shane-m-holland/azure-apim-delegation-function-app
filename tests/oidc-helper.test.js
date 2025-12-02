@@ -20,7 +20,7 @@ describe('OIDC Helper', () => {
 
   beforeEach(() => {
     context = createMockContext();
-    
+
     // Reset environment variables with defaults
     process.env = {
       ...originalEnv,
@@ -96,7 +96,7 @@ describe('OIDC Helper', () => {
 
       https.get.mockImplementationOnce((url, callback) => {
         expect(url).toBe('https://test-domain.okta.com/.well-known/openid-configuration');
-        
+
         const response = {
           statusCode: 200,
           on: jest.fn((event, callback) => {
@@ -121,7 +121,10 @@ describe('OIDC Helper', () => {
         issuer: 'https://test-domain.okta.com'
       });
 
-      expect(context.log).toHaveBeenCalledWith('Discovering OIDC endpoints for:', 'https://test-domain.okta.com');
+      expect(context.log).toHaveBeenCalledWith(
+        'Discovering OIDC endpoints for:',
+        'https://test-domain.okta.com'
+      );
       expect(context.log).toHaveBeenCalledWith('OIDC endpoints discovered:', expect.any(Object));
     });
 
@@ -151,7 +154,10 @@ describe('OIDC Helper', () => {
         issuer: 'https://test-domain.okta.com'
       });
 
-      expect(context.log).toHaveBeenCalledWith('OIDC discovery failed, falling back to manual configuration:', expect.any(String));
+      expect(context.log).toHaveBeenCalledWith(
+        'OIDC discovery failed, falling back to manual configuration:',
+        expect.any(String)
+      );
       expect(context.log).toHaveBeenCalledWith('Using fallback endpoints:', expect.any(Object));
     });
 
@@ -200,8 +206,13 @@ describe('OIDC Helper', () => {
 
       const endpoints = await discoverOidcEndpoints('https://test-domain.okta.com', context);
 
-      expect(endpoints.authorization_endpoint).toBe('https://test-domain.okta.com/oauth2/authorize');
-      expect(context.log).toHaveBeenCalledWith('OIDC discovery failed, falling back to manual configuration:', 'Network error');
+      expect(endpoints.authorization_endpoint).toBe(
+        'https://test-domain.okta.com/oauth2/authorize'
+      );
+      expect(context.log).toHaveBeenCalledWith(
+        'OIDC discovery failed, falling back to manual configuration:',
+        'Network error'
+      );
     });
   });
 
@@ -249,7 +260,9 @@ describe('OIDC Helper', () => {
     test('should throw error when basic config is invalid', async () => {
       delete process.env.OIDC_CLIENT_ID;
 
-      await expect(getOidcConfiguration(context)).rejects.toThrow('Missing required OIDC configuration');
+      await expect(getOidcConfiguration(context)).rejects.toThrow(
+        'Missing required OIDC configuration'
+      );
     });
   });
 
@@ -268,11 +281,11 @@ describe('OIDC Helper', () => {
 
       expect(authUrl).toBe(
         'https://test-domain.okta.com/oauth2/authorize?' +
-        'client_id=test-client-id&' +
-        'response_type=code&' +
-        'scope=openid+profile+email&' +
-        'redirect_uri=https%3A%2F%2Ftest-function-app.azurewebsites.net%2Fapi%2Fauth-callback&' +
-        'state=encoded-state-data'
+          'client_id=test-client-id&' +
+          'response_type=code&' +
+          'scope=openid+profile+email&' +
+          'redirect_uri=https%3A%2F%2Ftest-function-app.azurewebsites.net%2Fapi%2Fauth-callback&' +
+          'state=encoded-state-data'
       );
     });
 
@@ -304,7 +317,9 @@ describe('OIDC Helper', () => {
       const state = 'state with spaces and special chars!@#$%';
       const authUrl = buildAuthorizationUrl(mockConfig, state);
 
-      expect(authUrl).toContain('redirect_uri=https%3A%2F%2Ftest-function-app.azurewebsites.net%2Fapi%2Fauth-callback%3Fparam%3Dvalue');
+      expect(authUrl).toContain(
+        'redirect_uri=https%3A%2F%2Ftest-function-app.azurewebsites.net%2Fapi%2Fauth-callback%3Fparam%3Dvalue'
+      );
       expect(authUrl).toContain('state=state+with+spaces+and+special+chars%21%40%23%24%25');
     });
   });
@@ -317,14 +332,14 @@ describe('OIDC Helper', () => {
 
     test('should return false for invalid configuration', () => {
       delete process.env.OIDC_CLIENT_ID;
-      
+
       const result = validateOidcConfig();
       expect(result).toBe(false);
     });
 
     test('should return false when all environment variables are missing', () => {
       process.env = {};
-      
+
       const result = validateOidcConfig();
       expect(result).toBe(false);
     });
@@ -350,8 +365,13 @@ describe('OIDC Helper', () => {
       const endpoints = await discoverOidcEndpoints('https://test-domain.okta.com', context);
 
       // Should fallback to manual configuration
-      expect(endpoints.authorization_endpoint).toBe('https://test-domain.okta.com/oauth2/authorize');
-      expect(context.log).toHaveBeenCalledWith('OIDC discovery failed, falling back to manual configuration:', expect.stringContaining('Failed to parse response'));
+      expect(endpoints.authorization_endpoint).toBe(
+        'https://test-domain.okta.com/oauth2/authorize'
+      );
+      expect(context.log).toHaveBeenCalledWith(
+        'OIDC discovery failed, falling back to manual configuration:',
+        expect.stringContaining('Failed to parse response')
+      );
     });
 
     test('should handle empty discovery response', async () => {
@@ -373,7 +393,9 @@ describe('OIDC Helper', () => {
       const endpoints = await discoverOidcEndpoints('https://test-domain.okta.com', context);
 
       // Should fallback to manual configuration
-      expect(endpoints.authorization_endpoint).toBe('https://test-domain.okta.com/oauth2/authorize');
+      expect(endpoints.authorization_endpoint).toBe(
+        'https://test-domain.okta.com/oauth2/authorize'
+      );
     });
   });
 });

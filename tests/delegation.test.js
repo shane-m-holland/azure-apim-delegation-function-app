@@ -12,14 +12,14 @@ describe('Delegation Function', () => {
   beforeEach(() => {
     context = createMockContext();
     req = createMockRequest();
-    
+
     // Reset environment variables
     process.env = {
       ...originalEnv,
       APIM_VALIDATION_KEY: Buffer.from('test-validation-key').toString('base64'),
       APIM_PORTAL_URL: 'https://test-apim.developer.azure-api.net'
     };
-    
+
     // Reset mocks
     jest.clearAllMocks();
   });
@@ -59,7 +59,7 @@ describe('Delegation Function', () => {
     test('should accept request with valid signature for SignIn', async () => {
       const salt = 'test-salt';
       const returnUrl = '/test';
-      
+
       // Create valid signature using the same logic as the function
       const crypto = require('crypto');
       const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
@@ -86,7 +86,8 @@ describe('Delegation Function', () => {
         }
       };
 
-      const mockAuthUrl = 'https://test-domain.okta.com/oauth2/authorize?client_id=test-client-id&response_type=code&state=mock-state';
+      const mockAuthUrl =
+        'https://test-domain.okta.com/oauth2/authorize?client_id=test-client-id&response_type=code&state=mock-state';
 
       getOidcConfiguration.mockResolvedValue(mockOidcConfig);
       buildAuthorizationUrl.mockReturnValue(mockAuthUrl);
@@ -102,7 +103,7 @@ describe('Delegation Function', () => {
     test('should accept request with valid signature for SignOut with userId', async () => {
       const salt = 'test-salt';
       const userId = 'test-user@example.com';
-      
+
       // Create valid signature using the same logic as the function
       const crypto = require('crypto');
       const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
@@ -138,7 +139,7 @@ describe('Delegation Function', () => {
     beforeEach(() => {
       const salt = 'test-salt';
       const returnUrl = '/test';
-      
+
       const crypto = require('crypto');
       const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
       const stringToSign = salt + '\n' + returnUrl;
@@ -160,7 +161,8 @@ describe('Delegation Function', () => {
         redirectUri: 'https://test-function-app.azurewebsites.net/api/auth-callback'
       };
 
-      const expectedAuthUrl = 'https://test-domain.okta.com/oauth2/authorize?client_id=test-client-id&response_type=code&redirect_uri=https%3A%2F%2Ftest-function-app.azurewebsites.net%2Fapi%2Fauth-callback&scope=openid+profile+email&state=encoded-state';
+      const expectedAuthUrl =
+        'https://test-domain.okta.com/oauth2/authorize?client_id=test-client-id&response_type=code&redirect_uri=https%3A%2F%2Ftest-function-app.azurewebsites.net%2Fapi%2Fauth-callback&scope=openid+profile+email&state=encoded-state';
 
       getOidcConfiguration.mockResolvedValue(mockOidcConfig);
       buildAuthorizationUrl.mockReturnValue(expectedAuthUrl);
@@ -208,7 +210,7 @@ describe('Delegation Function', () => {
     beforeEach(() => {
       const salt = 'test-salt';
       const userId = 'test-user@example.com';
-      
+
       const crypto = require('crypto');
       const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
       const stringToSign = salt + '\n' + userId;
@@ -251,7 +253,9 @@ describe('Delegation Function', () => {
       await delegationFunction(context, req);
 
       expect(context.res.status).toBe(302);
-      expect(context.res.headers.Location).toBe('https://test-apim.developer.azure-api.net/dashboard');
+      expect(context.res.headers.Location).toBe(
+        'https://test-apim.developer.azure-api.net/dashboard'
+      );
     });
 
     test('should handle OIDC configuration error gracefully', async () => {
@@ -260,12 +264,14 @@ describe('Delegation Function', () => {
       await delegationFunction(context, req);
 
       expect(context.res.status).toBe(302);
-      expect(context.res.headers.Location).toBe('https://test-apim.developer.azure-api.net/dashboard');
+      expect(context.res.headers.Location).toBe(
+        'https://test-apim.developer.azure-api.net/dashboard'
+      );
     });
 
     test('should use default portal URL when APIM_PORTAL_URL not set', async () => {
       delete process.env.APIM_PORTAL_URL;
-      
+
       const mockOidcConfig = {
         endpoints: {}
       };
@@ -283,7 +289,7 @@ describe('Delegation Function', () => {
     test('should return 400 for unsupported operation', async () => {
       const salt = 'test-salt';
       const userId = 'test-user@example.com';
-      
+
       const crypto = require('crypto');
       const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
       const stringToSign = salt + '\n' + userId;
@@ -306,7 +312,7 @@ describe('Delegation Function', () => {
     test('should support ChangePassword operation signature validation', async () => {
       const salt = 'test-salt';
       const userId = 'test-user@example.com';
-      
+
       const crypto = require('crypto');
       const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
       const stringToSign = salt + '\n' + userId;

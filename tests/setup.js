@@ -42,7 +42,7 @@ global.createMockRequest = (options = {}) => {
     params: options.params || {},
     body: options.body || null,
     rawBody: options.rawBody || null,
-    get: jest.fn((name) => options.headers[name.toLowerCase()]),
+    get: jest.fn(name => options.headers[name.toLowerCase()]),
     ...options
   };
 };
@@ -58,7 +58,7 @@ process.env.OIDC_REDIRECT_URI = 'https://test-function-app.azurewebsites.net/api
 process.env.BASE_URL = 'https://test-function-app.azurewebsites.net';
 
 // Global test utilities
-global.sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+global.sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Console override for cleaner test output
 const originalConsole = console;

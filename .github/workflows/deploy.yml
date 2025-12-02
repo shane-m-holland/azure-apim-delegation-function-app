@@ -5,7 +5,6 @@ on:
     branches:
       # - main
       - develop
-  
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
@@ -15,34 +14,34 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-    - name: Setup Node ${{ env.NODE_VERSION }} Environment
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+      - name: Setup Node ${{ env.NODE_VERSION }} Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-    - name: 'Install dependencies'
-      shell: bash
-      run: |
-        npm ci
+      - name: 'Install dependencies'
+        shell: bash
+        run: |
+          npm ci
 
-    - name: 'Run linting'
-      shell: bash
-      run: |
-        npm run lint
+      - name: 'Run linting'
+        shell: bash
+        run: |
+          npm run lint
 
-    - name: 'Run tests'
-      shell: bash
-      run: |
-        npm run test
+      - name: 'Run tests'
+        shell: bash
+        run: |
+          npm run test
 
-    - name: 'Build application'
-      shell: bash
-      run: |
-        npm run build
+      - name: 'Build application'
+        shell: bash
+        run: |
+          npm run build
 
   deploy-infrastructure:
     needs: build-and-test
@@ -50,7 +49,7 @@ jobs:
     if: github.event_name == 'push'
     strategy:
       matrix:
-        environment: 
+        environment:
           # - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
           - dev
     environment: ${{ matrix.environment }}
@@ -58,50 +57,50 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    
+
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-    - name: 'Login to Azure'
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: 'Deploy Infrastructure'
-      uses: azure/arm-deploy@v2
-      id: deploy-infrastructure
-      with:
-        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        template: ./infrastructure/main.bicep
-        parameters: >
-          appName=${{ secrets.APP_NAME || 'apim-delegation' }}
-          location=${{ secrets.AZURE_LOCATION || 'eastus2' }}
-          runtime=${{ secrets.RUNTIME || 'node' }}
-          sku=${{ secrets.AZURE_SKU || 'FC1' }}
-          osType=${{ secrets.AZURE_OS_TYPE || 'linux' }}
-          environment=${{ matrix.environment }}
-          apimValidationKey=${{ secrets.APIM_VALIDATION_KEY }}
-          apimPortalUrl=${{ secrets.APIM_PORTAL_URL }}
-          oidcIssuer=${{ secrets.OIDC_ISSUER }}
-          oidcClientId=${{ secrets.OIDC_CLIENT_ID }}
-          oidcClientSecret=${{ secrets.OIDC_CLIENT_SECRET }}
-          oidcAuthorizationEndpoint=${{ secrets.OIDC_AUTHORIZATION_ENDPOINT || '' }}
-          oidcTokenEndpoint=${{ secrets.OIDC_TOKEN_ENDPOINT || '' }}
-          oidcUserinfoEndpoint=${{ secrets.OIDC_USERINFO_ENDPOINT || '' }}
-          apimResourceGroup=${{ secrets.APIM_RESOURCE_GROUP || '' }}
-          apimServiceName=${{ secrets.APIM_SERVICE_NAME || '' }}
-          apimAccessToken=${{ secrets.APIM_ACCESS_TOKEN || '' }}
-        scope: resourcegroup
-        failOnStdErr: false
+      - name: 'Deploy Infrastructure'
+        uses: azure/arm-deploy@v2
+        id: deploy-infrastructure
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          template: ./infrastructure/main.bicep
+          parameters: >
+            appName=${{ secrets.APP_NAME || 'apim-delegation' }}
+            location=${{ secrets.AZURE_LOCATION || 'eastus2' }}
+            runtime=${{ secrets.RUNTIME || 'node' }}
+            sku=${{ secrets.AZURE_SKU || 'FC1' }}
+            osType=${{ secrets.AZURE_OS_TYPE || 'linux' }}
+            environment=${{ matrix.environment }}
+            apimValidationKey=${{ secrets.APIM_VALIDATION_KEY }}
+            apimPortalUrl=${{ secrets.APIM_PORTAL_URL }}
+            oidcIssuer=${{ secrets.OIDC_ISSUER }}
+            oidcClientId=${{ secrets.OIDC_CLIENT_ID }}
+            oidcClientSecret=${{ secrets.OIDC_CLIENT_SECRET }}
+            oidcAuthorizationEndpoint=${{ secrets.OIDC_AUTHORIZATION_ENDPOINT || '' }}
+            oidcTokenEndpoint=${{ secrets.OIDC_TOKEN_ENDPOINT || '' }}
+            oidcUserinfoEndpoint=${{ secrets.OIDC_USERINFO_ENDPOINT || '' }}
+            apimResourceGroup=${{ secrets.APIM_RESOURCE_GROUP || '' }}
+            apimServiceName=${{ secrets.APIM_SERVICE_NAME || '' }}
+            apimAccessToken=${{ secrets.APIM_ACCESS_TOKEN || '' }}
+          scope: resourcegroup
+          failOnStdErr: false
 
-    - name: 'Output Infrastructure Details'
-      run: |
-        echo "Function App Name: ${{ steps.deploy-infrastructure.outputs.functionAppName }}"
-        echo "Function App URL: https://${{ steps.deploy-infrastructure.outputs.functionAppHostName }}"
+      - name: 'Output Infrastructure Details'
+        run: |
+          echo "Function App Name: ${{ steps.deploy-infrastructure.outputs.functionAppName }}"
+          echo "Function App URL: https://${{ steps.deploy-infrastructure.outputs.functionAppHostName }}"
 
   deploy-application:
     needs: [build-and-test, deploy-infrastructure]
@@ -109,105 +108,105 @@ jobs:
     if: github.event_name == 'push'
     strategy:
       matrix:
-        environment: 
+        environment:
           - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
     environment: ${{ matrix.environment }}
 
     permissions:
       id-token: write
       contents: read
-    
+
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-    - name: Setup Node ${{ env.NODE_VERSION }} Environment
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+      - name: Setup Node ${{ env.NODE_VERSION }} Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-    - name: 'Install dependencies'
-      shell: bash
-      run: |
-        npm ci --only=production
+      - name: 'Install dependencies'
+        shell: bash
+        run: |
+          npm ci --only=production
 
-    - name: 'Login to Azure'
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: 'Get Function App Name'
-      id: get-function-app
-      run: |
-        APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
-        FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
-        echo "function-app-name=$FUNCTION_APP_NAME" >> $GITHUB_OUTPUT
+      - name: 'Get Function App Name'
+        id: get-function-app
+        run: |
+          APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
+          FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
+          echo "function-app-name=$FUNCTION_APP_NAME" >> $GITHUB_OUTPUT
 
-    - name: 'Create Deployment Package'
-      run: |
-        # Create ZIP file for deployment (matching deploy script approach)
-        ZIP_FILE="deployment-$(date +%Y%m%d-%H%M%S).zip"
-        echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
-        
-        zip -r "$ZIP_FILE" . \
-          -x "*.git*" \
-          -x "node_modules/.cache/*" \
-          -x "*.env*" \
-          -x "*.log" \
-          -x "coverage/*" \
-          -x "test*" \
-          -x "docs/*" \
-          -x "infrastructure/*" \
-          -x "scripts/*" \
-          -x "*.md" \
-          -x "*.zip"
+      - name: 'Create Deployment Package'
+        run: |
+          # Create ZIP file for deployment (matching deploy script approach)
+          ZIP_FILE="deployment-$(date +%Y%m%d-%H%M%S).zip"
+          echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
 
-    - name: 'Deploy to Azure Functions'
-      uses: azure/CLI@v2
-      with:
-        inlineScript: |
-          # Deploy the ZIP file
-          echo "Starting deployment to ${{ steps.get-function-app.outputs.function-app-name }}..."
+          zip -r "$ZIP_FILE" . \
+            -x "*.git*" \
+            -x "node_modules/.cache/*" \
+            -x "*.env*" \
+            -x "*.log" \
+            -x "coverage/*" \
+            -x "test*" \
+            -x "docs/*" \
+            -x "infrastructure/*" \
+            -x "scripts/*" \
+            -x "*.md" \
+            -x "*.zip"
 
-          # FC1 deployment may fail when fetching logs, but deployment succeeds
-          # We check the output for success message instead of exit code
-          set +e  # Don't exit on error
-          DEPLOY_OUTPUT=$(az functionapp deployment source config-zip \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ steps.get-function-app.outputs.function-app-name }} \
-            --src ${{ env.ZIP_FILE }} \
-            --timeout 600 2>&1)
-          DEPLOY_EXIT_CODE=$?
-          set -e  # Re-enable exit on error
+      - name: 'Deploy to Azure Functions'
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            # Deploy the ZIP file
+            echo "Starting deployment to ${{ steps.get-function-app.outputs.function-app-name }}..."
 
-          echo "$DEPLOY_OUTPUT"
+            # FC1 deployment may fail when fetching logs, but deployment succeeds
+            # We check the output for success message instead of exit code
+            set +e  # Don't exit on error
+            DEPLOY_OUTPUT=$(az functionapp deployment source config-zip \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ steps.get-function-app.outputs.function-app-name }} \
+              --src ${{ env.ZIP_FILE }} \
+              --timeout 600 2>&1)
+            DEPLOY_EXIT_CODE=$?
+            set -e  # Re-enable exit on error
 
-          # Check if deployment was successful (look for success message)
-          if echo "$DEPLOY_OUTPUT" | grep -q "Deployment was successful"; then
-            echo ""
-            echo "✅ Deployment package uploaded successfully."
-            echo "Note: Exit code $DEPLOY_EXIT_CODE may be non-zero due to FC1 log fetch limitation (this is expected)."
-            echo ""
-            echo "Waiting for deployment to stabilize..."
-            sleep 20
-            echo "✅ Deployment completed. The smoke-tests job will verify endpoints are working."
-            exit 0
-          elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
-            echo "✅ Deployment completed successfully (exit code 0)."
-            exit 0
-          else
-            echo ""
-            echo "❌ Deployment failed - success message not found in output"
-            echo "Exit code: $DEPLOY_EXIT_CODE"
-            exit 1
-          fi
+            echo "$DEPLOY_OUTPUT"
 
-    - name: 'Cleanup Deployment Package'
-      if: always()
-      run: rm -f deployment-*.zip
+            # Check if deployment was successful (look for success message)
+            if echo "$DEPLOY_OUTPUT" | grep -q "Deployment was successful"; then
+              echo ""
+              echo "✅ Deployment package uploaded successfully."
+              echo "Note: Exit code $DEPLOY_EXIT_CODE may be non-zero due to FC1 log fetch limitation (this is expected)."
+              echo ""
+              echo "Waiting for deployment to stabilize..."
+              sleep 20
+              echo "✅ Deployment completed. The smoke-tests job will verify endpoints are working."
+              exit 0
+            elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
+              echo "✅ Deployment completed successfully (exit code 0)."
+              exit 0
+            else
+              echo ""
+              echo "❌ Deployment failed - success message not found in output"
+              echo "Exit code: $DEPLOY_EXIT_CODE"
+              exit 1
+            fi
+
+      - name: 'Cleanup Deployment Package'
+        if: always()
+        run: rm -f deployment-*.zip
 
   smoke-tests:
     needs: [deploy-application]
@@ -215,60 +214,60 @@ jobs:
     if: github.event_name == 'push'
     strategy:
       matrix:
-        environment: 
+        environment:
           - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
     environment: ${{ matrix.environment }}
 
     permissions:
       id-token: write
       contents: read
-    
+
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-    - name: 'Login to Azure'
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: 'Get Function App URL'
-      id: get-function-url
-      run: |
-        APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
-        FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
-        FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name $FUNCTION_APP_NAME --query "properties.defaultHostName" -o tsv)
-        echo "function-app-url=https://$FUNCTION_APP_URL" >> $GITHUB_OUTPUT
+      - name: 'Get Function App URL'
+        id: get-function-url
+        run: |
+          APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
+          FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
+          FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name $FUNCTION_APP_NAME --query "properties.defaultHostName" -o tsv)
+          echo "function-app-url=https://$FUNCTION_APP_URL" >> $GITHUB_OUTPUT
 
-    - name: 'Health Check'
-      run: |
-        echo "Testing health endpoint..."
-        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get-function-url.outputs.function-app-url }}/api/health)
-        if [ $response -eq 200 ]; then
-          echo "✅ Health check passed"
-        else
-          echo "❌ Health check failed with status code: $response"
-          exit 1
-        fi
+      - name: 'Health Check'
+        run: |
+          echo "Testing health endpoint..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get-function-url.outputs.function-app-url }}/api/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed with status code: $response"
+            exit 1
+          fi
 
-    - name: 'Test Delegation Endpoint'
-      run: |
-        echo "Testing delegation endpoint (should return 401 without valid signature)..."
-        response=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.get-function-url.outputs.function-app-url }}/api/delegation?operation=SignIn&returnUrl=test")
-        if [ $response -eq 401 ]; then
-          echo "✅ Delegation endpoint correctly rejects invalid requests"
-        else
-          echo "❌ Delegation endpoint test failed with status code: $response"
-          exit 1
-        fi
+      - name: 'Test Delegation Endpoint'
+        run: |
+          echo "Testing delegation endpoint (should return 401 without valid signature)..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.get-function-url.outputs.function-app-url }}/api/delegation?operation=SignIn&returnUrl=test")
+          if [ $response -eq 401 ]; then
+            echo "✅ Delegation endpoint correctly rejects invalid requests"
+          else
+            echo "❌ Delegation endpoint test failed with status code: $response"
+            exit 1
+          fi
 
-    - name: 'Deployment Summary'
-      run: |
-        echo "🚀 Deployment completed successfully!"
-        echo "Environment: ${{ matrix.environment }}"
-        echo "Function App URL: ${{ steps.get-function-url.outputs.function-app-url }}"
-        echo "Health Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/health"
-        echo "Delegation Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/delegation"
-        echo "Auth Callback Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/auth-callback"
+      - name: 'Deployment Summary'
+        run: |
+          echo "🚀 Deployment completed successfully!"
+          echo "Environment: ${{ matrix.environment }}"
+          echo "Function App URL: ${{ steps.get-function-url.outputs.function-app-url }}"
+          echo "Health Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/health"
+          echo "Delegation Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/delegation"
+          echo "Auth Callback Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/auth-callback"

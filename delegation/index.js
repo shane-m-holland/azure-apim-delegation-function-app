@@ -7,9 +7,9 @@ function validateApimSignature(operation, salt, returnUrl, userId, signature, co
   if (!process.env.APIM_VALIDATION_KEY || !signature) {
     return false;
   }
-    
+
   let stringToSign;
-    
+
   // Use the EXACT Microsoft specification for string construction
   switch (operation) {
     case 'SignIn':
@@ -26,18 +26,18 @@ function validateApimSignature(operation, salt, returnUrl, userId, signature, co
       context.log('Unsupported operation for signature validation:', operation);
       return false;
   }
-    
+
   context.log('String to sign:', JSON.stringify(stringToSign));
-    
+
   // Use HMAC-SHA512 with base64-decoded key (Microsoft's exact specification)
   const keyBytes = Buffer.from(process.env.APIM_VALIDATION_KEY, 'base64');
   const hmac = crypto.createHmac('sha512', keyBytes);
   const computedSignature = hmac.update(stringToSign, 'utf8').digest('base64');
-    
+
   context.log('Computed signature:', computedSignature);
   context.log('Received signature:', signature);
   context.log('Signatures match:', computedSignature === signature);
-    
+
   return computedSignature === signature;
 }
 
@@ -96,19 +96,19 @@ module.exports = async function (context, req) {
         userId,
         timestamp: Date.now()
       };
-            
+
       // Encode state data
       const encodedState = Buffer.from(JSON.stringify(stateData)).toString('base64');
-            
+
       // Build authorization URL using discovered endpoints
       const authUrl = buildAuthorizationUrl(oidcConfig, encodedState);
-            
+
       context.log('Redirecting to OIDC provider:', authUrl);
 
       context.res = {
         status: 302,
         headers: {
-          'Location': authUrl
+          Location: authUrl
         }
       };
       return;
@@ -125,16 +125,16 @@ module.exports = async function (context, req) {
         // Check if OIDC provider supports logout endpoint
         if (oidcConfig.endpoints.end_session_endpoint) {
           context.log('OIDC provider supports logout, redirecting to end_session_endpoint');
-                    
+
           // Build logout URL with post_logout_redirect_uri
           const apimPortalUrl = process.env.APIM_PORTAL_URL;
           const logoutUrl = new URL(oidcConfig.endpoints.end_session_endpoint);
-                    
+
           // Add post_logout_redirect_uri parameter
           if (apimPortalUrl) {
             logoutUrl.searchParams.set('post_logout_redirect_uri', apimPortalUrl + returnUrl);
           }
-                    
+
           // Add state parameter with return context
           const logoutState = {
             returnUrl,
@@ -145,45 +145,46 @@ module.exports = async function (context, req) {
           logoutUrl.searchParams.set('state', encodedLogoutState);
 
           context.log('Redirecting to OIDC logout URL:', logoutUrl.toString());
-                    
+
           context.res = {
             status: 302,
             headers: {
-              'Location': logoutUrl.toString()
+              Location: logoutUrl.toString()
             }
           };
           return;
         } else {
-          context.log('OIDC provider does not support end_session_endpoint, redirecting directly to APIM portal');
-                    
+          context.log(
+            'OIDC provider does not support end_session_endpoint, redirecting directly to APIM portal'
+          );
+
           // Fallback: redirect directly to APIM portal
           const apimPortalUrl = process.env.APIM_PORTAL_URL || 'https://localhost';
           const fallbackUrl = apimPortalUrl + (returnUrl || '/');
-                    
+
           context.log('Fallback logout redirect to:', fallbackUrl);
-                    
+
           context.res = {
             status: 302,
             headers: {
-              'Location': fallbackUrl
+              Location: fallbackUrl
             }
           };
           return;
         }
-                
       } catch (error) {
         context.log.error('Error during SignOut processing:', error.message);
-                
+
         // Fallback on error: redirect to APIM portal
         const apimPortalUrl = process.env.APIM_PORTAL_URL || 'https://localhost';
         const fallbackUrl = apimPortalUrl + (returnUrl || '/');
-                
+
         context.log('Error fallback logout redirect to:', fallbackUrl);
-                
+
         context.res = {
           status: 302,
           headers: {
-            'Location': fallbackUrl
+            Location: fallbackUrl
           }
         };
         return;
@@ -198,7 +199,6 @@ module.exports = async function (context, req) {
       },
       body: { error: 'Unsupported operation' }
     };
-
   } catch (error) {
     context.log.error('Delegation function error:', error);
     context.res = {

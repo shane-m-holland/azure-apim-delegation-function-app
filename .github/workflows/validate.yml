@@ -12,31 +12,31 @@ jobs:
   validate-build:
     runs-on: ubuntu-latest
     steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-    - name: Setup Node ${{ env.NODE_VERSION }} Environment
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+      - name: Setup Node ${{ env.NODE_VERSION }} Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-    - name: 'Install dependencies'
-      shell: bash
-      run: |
-        npm ci
+      - name: 'Install dependencies'
+        shell: bash
+        run: |
+          npm ci
 
-    - name: 'Run linting'
-      shell: bash
-      run: |
-        npm run lint
+      - name: 'Run linting'
+        shell: bash
+        run: |
+          npm run lint
 
-    - name: 'Run tests'
-      shell: bash
-      run: |
-        npm run test
+      - name: 'Run tests'
+        shell: bash
+        run: |
+          npm run test
 
-    - name: 'Build application'
-      shell: bash
-      run: |
-        npm run build
+      - name: 'Build application'
+        shell: bash
+        run: |
+          npm run build

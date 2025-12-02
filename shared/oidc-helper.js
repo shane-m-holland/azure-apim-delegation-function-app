@@ -14,7 +14,9 @@ function getOidcConfig() {
   const redirectUri = process.env.OIDC_REDIRECT_URI;
 
   if (!issuer || !clientId || !clientSecret || !redirectUri) {
-    throw new Error('Missing required OIDC configuration. Please set OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, and OIDC_REDIRECT_URI');
+    throw new Error(
+      'Missing required OIDC configuration. Please set OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, and OIDC_REDIRECT_URI'
+    );
   }
 
   return { issuer, clientId, clientSecret, redirectUri };
@@ -25,23 +27,25 @@ function getOidcConfig() {
  */
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      let data = '';
-      res.on('data', chunk => {
-        data += chunk;
-      });
-      res.on('end', () => {
-        try {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(JSON.parse(data));
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+    https
+      .get(url, res => {
+        let data = '';
+        res.on('data', chunk => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          try {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(JSON.parse(data));
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+            }
+          } catch (e) {
+            reject(new Error(`Failed to parse response: ${data}`));
           }
-        } catch (e) {
-          reject(new Error(`Failed to parse response: ${data}`));
-        }
-      });
-    }).on('error', reject);
+        });
+      })
+      .on('error', reject);
   });
 }
 
@@ -53,7 +57,7 @@ async function discoverOidcEndpoints(issuer, context) {
   const cached = discoveryCache.get(cacheKey);
 
   // Return cached result if still valid
-  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     context?.log('Using cached OIDC discovery for:', issuer);
     return cached.endpoints;
   }
@@ -79,7 +83,6 @@ async function discoverOidcEndpoints(issuer, context) {
 
     context?.log('OIDC endpoints discovered:', endpoints);
     return endpoints;
-
   } catch (error) {
     context?.log('OIDC discovery failed, falling back to manual configuration:', error.message);
 

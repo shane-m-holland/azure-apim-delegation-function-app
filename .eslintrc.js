@@ -6,13 +6,8 @@ module.exports = {
     node: true,
     jest: true
   },
-  extends: [
-    'eslint:recommended',
-    'prettier'
-  ],
-  plugins: [
-    'node'
-  ],
+  extends: ['eslint:recommended', 'prettier'],
+  plugins: ['node'],
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module'
@@ -20,29 +15,35 @@ module.exports = {
   rules: {
     // Error prevention
     'no-console': 'off', // Allow console.log in Azure Functions
-    'no-unused-vars': ['error', {
-      argsIgnorePattern: '^_',
-      varsIgnorePattern: '^_'
-    }],
+    'no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }
+    ],
     'no-undef': 'error',
     'no-unreachable': 'error',
     'no-duplicate-imports': 'error',
 
     // Code style
-    'indent': ['error', 2, { SwitchCase: 1 }],
-    'quotes': ['error', 'single', { avoidEscape: true }],
-    'semi': ['error', 'always'],
+    indent: ['error', 2, { SwitchCase: 1 }],
+    quotes: ['error', 'single', { avoidEscape: true }],
+    semi: ['error', 'always'],
     'comma-dangle': ['error', 'never'],
     'object-curly-spacing': ['error', 'always'],
     'array-bracket-spacing': ['error', 'never'],
-    'space-before-function-paren': ['error', {
-      anonymous: 'always',
-      named: 'never',
-      asyncArrow: 'always'
-    }],
+    'space-before-function-paren': [
+      'error',
+      {
+        anonymous: 'always',
+        named: 'never',
+        asyncArrow: 'always'
+      }
+    ],
 
     // Best practices
-    'eqeqeq': ['error', 'always'],
+    eqeqeq: ['error', 'always'],
     'no-eval': 'error',
     'no-implied-eval': 'error',
     'no-new-func': 'error',
