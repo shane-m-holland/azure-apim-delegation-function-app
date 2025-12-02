@@ -1,10 +1,26 @@
 name: Deploy Azure Function App
 
 on:
-  push:
-    branches:
-      # - main
-      - develop
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        type: choice
+        options:
+          - main
+          - develop
+        default: 'develop'
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - uat
+          - prod
+        default: 'dev'
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
@@ -16,6 +32,8 @@ jobs:
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Setup Node ${{ env.NODE_VERSION }} Environment
         uses: actions/setup-node@v4
@@ -46,13 +64,7 @@ jobs:
   deploy-infrastructure:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    strategy:
-      matrix:
-        environment:
-          # - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-          - dev
-    environment: ${{ matrix.environment }}
+    environment: ${{ inputs.environment }}
 
     permissions:
       id-token: write
@@ -61,6 +73,8 @@ jobs:
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: 'Login to Azure'
         uses: azure/login@v2
@@ -82,7 +96,7 @@ jobs:
             runtime=${{ secrets.RUNTIME || 'node' }}
             sku=${{ secrets.AZURE_SKU || 'FC1' }}
             osType=${{ secrets.AZURE_OS_TYPE || 'linux' }}
-            environment=${{ matrix.environment }}
+            environment=${{ inputs.environment }}
             apimValidationKey=${{ secrets.APIM_VALIDATION_KEY }}
             apimPortalUrl=${{ secrets.APIM_PORTAL_URL }}
             oidcIssuer=${{ secrets.OIDC_ISSUER }}
@@ -105,12 +119,7 @@ jobs:
   deploy-application:
     needs: [build-and-test, deploy-infrastructure]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    strategy:
-      matrix:
-        environment:
-          - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-    environment: ${{ matrix.environment }}
+    environment: ${{ inputs.environment }}
 
     permissions:
       id-token: write
@@ -119,6 +128,8 @@ jobs:
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Setup Node ${{ env.NODE_VERSION }} Environment
         uses: actions/setup-node@v4
@@ -142,7 +153,7 @@ jobs:
         id: get-function-app
         run: |
           APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
-          FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
+          FUNCTION_APP_NAME="${APP_NAME}-${{ inputs.environment }}"
           echo "function-app-name=$FUNCTION_APP_NAME" >> $GITHUB_OUTPUT
 
       - name: 'Create Deployment Package'
@@ -211,12 +222,7 @@ jobs:
   smoke-tests:
     needs: [deploy-application]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    strategy:
-      matrix:
-        environment:
-          - ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-    environment: ${{ matrix.environment }}
+    environment: ${{ inputs.environment }}
 
     permissions:
       id-token: write
@@ -225,6 +231,8 @@ jobs:
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: 'Login to Azure'
         uses: azure/login@v2
@@ -237,7 +245,7 @@ jobs:
         id: get-function-url
         run: |
           APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
-          FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
+          FUNCTION_APP_NAME="${APP_NAME}-${{ inputs.environment }}"
           FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name $FUNCTION_APP_NAME --query "properties.defaultHostName" -o tsv)
           echo "function-app-url=https://$FUNCTION_APP_URL" >> $GITHUB_OUTPUT
 
@@ -266,7 +274,8 @@ jobs:
       - name: 'Deployment Summary'
         run: |
           echo "🚀 Deployment completed successfully!"
-          echo "Environment: ${{ matrix.environment }}"
+          echo "Branch: ${{ inputs.branch }}"
+          echo "Environment: ${{ inputs.environment }}"
           echo "Function App URL: ${{ steps.get-function-url.outputs.function-app-url }}"
           echo "Health Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/health"
           echo "Delegation Endpoint: ${{ steps.get-function-url.outputs.function-app-url }}/api/delegation"
