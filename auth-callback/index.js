@@ -2,6 +2,13 @@
 const https = require('https');
 const { getOidcConfiguration } = require('../shared/oidc-helper');
 
+const tlsAgent = new https.Agent({
+  keepAlive: true,
+  minVersion: 'TLSv1.2',
+  maxVersion: 'TLSv1.3',
+  rejectUnauthorized: true // Ensure certificate validation
+});
+
 // Helper function to make HTTP POST requests
 function httpPost(url, postData, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -18,7 +25,8 @@ function httpPost(url, postData, headers = {}) {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData),
         ...headers
-      }
+      },
+      agent: tlsAgent
     };
 
     const req = https.request(options, (res) => {
@@ -74,7 +82,8 @@ async function getAzureAccessToken(context) {
       maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'X-IDENTITY-HEADER': identityHeader
-      }
+      },
+      agent: tlsAgent
     };
 
     https.get(options, (res) => {
@@ -164,7 +173,8 @@ function httpPutJson(url, data, headers = {}) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
         ...headers
-      }
+      },
+      agent: tlsAgent
     };
 
     const req = https.request(options, (res) => {
@@ -209,7 +219,8 @@ function httpPostJson(url, data, headers = {}) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
         ...headers
-      }
+      },
+      agent: tlsAgent
     };
 
     const req = https.request(options, (res) => {
@@ -249,7 +260,8 @@ function httpGetWithAuth(url, accessToken) {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json'
-      }
+      },
+      agent: tlsAgent
     };
 
     https.get(options, (res) => {
