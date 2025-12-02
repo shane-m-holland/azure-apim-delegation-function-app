@@ -135,6 +135,9 @@ module.exports = async function (context, req) {
             logoutUrl.searchParams.set('post_logout_redirect_uri', apimPortalUrl + returnUrl);
           }
 
+          // Add client_id parameter (required by some OIDC providers like Okta when id_token_hint is not provided)
+          logoutUrl.searchParams.set('client_id', oidcConfig.clientId);
+
           // Add state parameter with return context
           const logoutState = {
             returnUrl,
