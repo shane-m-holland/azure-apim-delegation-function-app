@@ -1,5 +1,6 @@
 // wwwroot/auth-callback/index.js
 const https = require('https');
+const http = require('http');
 const { getOidcConfiguration } = require('../shared/oidc-helper');
 
 const tlsAgent = new https.Agent({
@@ -52,41 +53,57 @@ function httpPost(url, postData, headers = {}) {
 // Helper function to get Azure access token (Managed Identity or manual)
 async function getAzureAccessToken(context) {
   const manualToken = process.env.APIM_ACCESS_TOKEN;
-    
+
   // If manual token is provided (cross-subscription scenario), use it
   if (manualToken) {
     context.log('Using provided APIM_ACCESS_TOKEN for authentication');
     return manualToken;
   }
-    
+
   // Otherwise, use Managed Identity (same-subscription scenario)
   context.log('Using Managed Identity for authentication');
   const identityEndpoint = process.env.IDENTITY_ENDPOINT;
   const identityHeader = process.env.IDENTITY_HEADER;
-    
+
   if (!identityEndpoint || !identityHeader) {
     throw new Error('Managed Identity not available. Either provide APIM_ACCESS_TOKEN or ensure Function App has System-Assigned Managed Identity enabled.');
   }
-    
+
   const tokenUrl = `${identityEndpoint}?resource=https://management.azure.com/&api-version=2019-08-01`;
-    
+
   return new Promise((resolve, reject) => {
     const urlObj = new URL(tokenUrl);
+
+    // Detect protocol from URL and use appropriate module
+    const isHttps = urlObj.protocol === 'https:';
+    const httpModule = isHttps ? https : http;
+
+    // Log connection details for troubleshooting
+    context.log('IDENTITY_ENDPOINT details:', {
+      protocol: urlObj.protocol,
+      hostname: urlObj.hostname,
+      port: urlObj.port || (isHttps ? 443 : 80)
+    });
+
     const options = {
       hostname: urlObj.hostname,
-      port: urlObj.port || 443,
+      port: urlObj.port || (isHttps ? 443 : 80),
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
-      servername: urlObj.hostname, // Enable SNI for custom domains
-      minVersion: 'TLSv1.2', // Support TLS 1.2 and above (including 1.3)
-      maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'X-IDENTITY-HEADER': identityHeader
-      },
-      agent: tlsAgent
+      }
     };
 
-    https.get(options, (res) => {
+    // Only add TLS/SNI options for HTTPS requests
+    if (isHttps) {
+      options.servername = urlObj.hostname;
+      options.minVersion = 'TLSv1.2';
+      options.maxVersion = 'TLSv1.3';
+      options.agent = tlsAgent;
+    }
+
+    httpModule.get(options, (res) => {
       let data = '';
       res.on('data', chunk => {
         data += chunk;
@@ -95,6 +112,7 @@ async function getAzureAccessToken(context) {
         try {
           const response = JSON.parse(data);
           if (response.access_token) {
+            context.log('Successfully obtained managed identity token');
             resolve(response.access_token);
           } else {
             reject(new Error(`Failed to get managed identity token: ${data}`));
@@ -103,7 +121,10 @@ async function getAzureAccessToken(context) {
           reject(new Error(`Failed to parse managed identity response: ${data}`));
         }
       });
-    }).on('error', reject);
+    }).on('error', (err) => {
+      context.log.error('Managed identity request failed:', err);
+      reject(err);
+    });
   });
 }
 
