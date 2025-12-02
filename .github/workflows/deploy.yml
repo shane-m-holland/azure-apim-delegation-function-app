@@ -239,7 +239,7 @@ jobs:
       run: |
         APP_NAME=${{ secrets.APP_NAME || 'apim-delegation' }}
         FUNCTION_APP_NAME="${APP_NAME}-${{ matrix.environment }}"
-        FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name $FUNCTION_APP_NAME --query "defaultHostName" -o tsv)
+        FUNCTION_APP_URL=$(az functionapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name $FUNCTION_APP_NAME --query "properties.defaultHostName" -o tsv)
         echo "function-app-url=https://$FUNCTION_APP_URL" >> $GITHUB_OUTPUT
 
     - name: 'Health Check'
