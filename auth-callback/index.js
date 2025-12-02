@@ -12,6 +12,8 @@ function httpPost(url, postData, headers = {}) {
       path: urlObj.pathname + urlObj.search,
       method: 'POST',
       servername: urlObj.hostname, // Enable SNI for custom domains
+      minVersion: 'TLSv1.2', // Support TLS 1.2 and above (including 1.3)
+      maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(postData),
@@ -68,6 +70,8 @@ async function getAzureAccessToken(context) {
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       servername: urlObj.hostname, // Enable SNI for custom domains
+      minVersion: 'TLSv1.2', // Support TLS 1.2 and above (including 1.3)
+      maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'X-IDENTITY-HEADER': identityHeader
       }
@@ -154,6 +158,8 @@ function httpPutJson(url, data, headers = {}) {
       path: urlObj.pathname + urlObj.search,
       method: 'PUT',
       servername: urlObj.hostname, // Enable SNI for custom domains
+      minVersion: 'TLSv1.2', // Support TLS 1.2 and above (including 1.3)
+      maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
@@ -197,6 +203,8 @@ function httpPostJson(url, data, headers = {}) {
       path: urlObj.pathname + urlObj.search,
       method: 'POST',
       servername: urlObj.hostname, // Enable SNI for custom domains
+      minVersion: 'TLSv1.2', // Support TLS 1.2 and above (including 1.3)
+      maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
@@ -236,6 +244,8 @@ function httpGetWithAuth(url, accessToken) {
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
       servername: urlObj.hostname, // Enable SNI for custom domains
+      minVersion: 'TLSv1.2', // Support TLS 1.2 and above (including 1.3)
+      maxVersion: 'TLSv1.3', // Allow up to TLS 1.3
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json'
